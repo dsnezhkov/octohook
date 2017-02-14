@@ -1,0 +1,10 @@
+---
+# Instructions
+issue:
+  title: Name 1
+  body: |
+     request:
+       - execlocal:
+           resource: process
+           command: 'ls -l /tt'
+...
