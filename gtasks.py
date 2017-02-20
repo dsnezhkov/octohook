@@ -23,17 +23,25 @@ class ExecLProcessTask:
 					self.responder.agentid, self.data))
 
 		process = subprocess.Popen(shlex.split(self.data['command']), 
-						stdout=subprocess.PIPE,  stderr=subprocess.PIPE)
+						stdout=subprocess.PIPE,  stderr=subprocess.PIPE, shell=True)
 		so, se = process.communicate()
 
+		response_data=""
 		if process.returncode == 0:
-			print("Process error: ".format(process.returncode))
-			response_data=so.decode('utf-8')
-		else:
-			print("Process success: ".format(process.returncode))
-			response_data=se.decode('utf-8')
+			# some utilities report progress on stderr, not necessarily and errror
+			if len(se) != 0:
+				#response_data += se.decode("utf-8", "replace")
+				response_data += se
 
-		print("{}".format(response_data))
+			print("Process success: ".format(process.returncode))
+			#response_data += so.decode("utf-8", "replace")
+			response_data += so
+		else:
+			print("Process error: ".format(process.returncode))
+			#response_data=se.decode("utf-8", "replace")
+			response_data=se
+
+		print("Response: {}".format(response_data))
 
 		self.responder.setData(response_data)
 		

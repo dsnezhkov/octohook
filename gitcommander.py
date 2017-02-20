@@ -76,7 +76,7 @@ class CommandParser:
 					cmd = cmd_switcher.get(command.keys()[0], "nosuchcommand")
 					getattr(CommandParser(self.agentid,self.issue), str(cmd))(command)
 		else:
-			print("CommandParser: Invalid request")
+			print("CommandParser: Invalid request. no 'request' directive?")
 			print(yaml.dump(request))
 
 	def getlocal(self, command):

