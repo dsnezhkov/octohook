@@ -5,7 +5,7 @@ import bottle
 from time import sleep
 import sys
 import json, yaml
-from gitcommander import CommandParser
+from gitcommander import CommandParser, GitEventWatcher
 
 class SSLWSGIRefServer(bottle.ServerAdapter):
     def run(self, handler):
@@ -23,17 +23,22 @@ class SSLWSGIRefServer(bottle.ServerAdapter):
         srv.serve_forever()
 
 class WService(object):
-   def __init__(self,param):
-     self.param   = param
-     self.q = self.param
-     print("init with = %s" % self.param)
+   def __init__(self,queue):
+     self.queue = queue
+     self.agentid='a932e9f5-2501-4c60-b5da-8a61ac244792'
 
-   def server(self):
-      if request.method == 'POST':
-         call=json.loads(request.data)
-         print("Incoming request: {}".format(call['action']))
-         #print(call)
+   def exf_server(self):
+      if bottle.request.method == 'POST':
+
+         #Enable GitHub Hooking
+         if bottle.request.get_header('X-GitHub-Event') == 'ping':
+            return
+         # No need to load JSON from body string, it;s pre-parsed by bottle...
+         #call=json.loads(str(bottle.request.body))
+         call=bottle.request.json
          if 'action' in call:
+            print("Incoming request: {}".format(call['action']))
+            #print(call)
             if call['action'] == 'labeled':
                #process newly created issue
                if 'issue' in call:
@@ -56,15 +61,26 @@ class WService(object):
                            print(call['issue']['body'])
                   else:
                      print("This issue does not have a body or named labels")
-                     #print(call)
                else:
                   print("This call is not a valid labeled issue")
-                  #print(call)
             else:
                print("This call is not a labeled issue")
-               #print(call)
          else:
             print("This call has no action")
-            #print(call)
+
+   def exf_client(self):
+      if bottle.request.method == 'POST':
+
+         #Enable GitHub Web Hooking registration 
+         if bottle.request.get_header('X-GitHub-Event') == 'ping':
+            return
+         #print(bottle.request.body.read())
+         call=bottle.request.json
+         if call is not None:
+            gew=GitEventWatcher(self.agentid,self.queue)
+            gew.watch_issue_closed(call)
+         else:
+            print("CLient: Skipping request")
+
 
 

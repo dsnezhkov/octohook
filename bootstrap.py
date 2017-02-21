@@ -17,10 +17,11 @@ def cmdservice_worker(data_q ):
     return
 
 def webservice_worker(data_q):
-    wsapp = WService(param=data_q)
+    wsapp = WService(queue=data_q)
 
     # Routes 
-    bottle.route("/exfil1", 'POST', wsapp.server)
+    bottle.route("/exfil1/", 'POST')(wsapp.exf_server)
+    bottle.route("/exfil2/", 'POST')(wsapp.exf_client)
 
     # Start Regulr bottle 
     #bottle.run(host='0.0.0.0', port=8080, debug=True, quiet=True)

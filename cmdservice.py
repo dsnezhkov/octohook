@@ -19,27 +19,28 @@ class ConCommander(cmd2.Cmd):
       self.data_q=data_q
       self.out_watch=None
 
-    def watcher_worker(self):
+    def gitshell_watcher(self):
       t = threading.currentThread()
       print("Watcher thread {}".format(t))
       while getattr(t, "do_run", True):
-        print ("Output RTM")
-        #sleep(1)
+        ghlib.checkIssueOutput(self.repo, self.data_q.get())
+        sleep(1)
       print("Stopping RTM")
 
     def do_rtm(self, comm):
       """Real Time output monitoring"""
       print("Command {} received".format(comm))
-      if comm == 'start':
+
+      if comm == 'gshstart':
          if self.out_watch is None or (not self.out_watch.isAlive()):
-            self.out_watch = threading.Thread(target=self.watcher_worker)
+            self.out_watch = threading.Thread(target=self.gitshell_watcher)
             self.out_watch.daemon=True
             print("Starting new thread ({})".format(comm))
             self.out_watch.start()
          else:
             print("Watchdog already running({})".format(self.out_watch.ident))
 
-      if comm == 'stop':
+      if comm == 'gshstop':
          print("Wishing to stop thread ({})".format(comm))
          if self.out_watch is not None and self.out_watch.isAlive():
             self.out_watch.do_run=False
@@ -60,14 +61,15 @@ class ConCommander(cmd2.Cmd):
         print("Queued ({}) ".format(self.data_q.qsize()))
       return stop
 
-    def do_execute(self, lcommand):
+    def do_execute(self, arg):
       """execute <command [arguments]>
       Send `command` and its arguments to server """
-      if lcommand:
-         print("Executing {}".format(lcommand))
+      if arg:
+         print("Executing {}".format(arg.parsed.dump()))
          stream = file(os.path.join(self.templatedir, 'execlocal.tmpl'), 'r')  
          instructions=load(stream)
-         instructions['issue']['body']['request'][0]['execlocal']['command']=lcommand
+         instructions['issue']['body']['request'][0]['execlocal']['command']=\
+								arg.parsed.statement.args
          self.issue=ghlib.createIssueFromInstructions(self.agentid, self.repo, instructions)
 
          if self.issue is not None:
