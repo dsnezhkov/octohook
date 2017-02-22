@@ -56,12 +56,12 @@ class WService(object):
                         'name' in call['issue']['labels'][0]:
                         try:
 
-                           # which agent is calling us 
+                           # which agent is calling us
                            agentid=call['issue']['labels'][0]['name']
                            issue=call['issue']['number']
 
                            # what is this agent's instructions
-                           body=yaml.load(call['issue']['body'])                    
+                           body=yaml.load(call['issue']['body'])
                            print("Instructions from: ({}) : ".format(agentid))
                            c=CommandParser(agentid, issue)
                            c.parse(body)
@@ -80,7 +80,7 @@ class WService(object):
    def exf_client(self):
       if bottle.request.method == 'POST':
 
-         #Enable GitHub Web Hooking registration 
+         #Enable GitHub Web Hooking registration
          if bottle.request.get_header('X-GitHub-Event') == 'ping':
             return
 
@@ -89,9 +89,10 @@ class WService(object):
          if call is not None:
             # Watch Events
             gew=GitEventWatcher(self.config['client']['general']['boot']['agentid'],self.queue)
-            gew.watch_issue_closed(call)
+            if bottle.request.get_header('X-GitHub-Event') == 'issue':
+               print("Event: Issue")
+               gew.watch_issue_closed(call)
+            if bottle.request.get_header('X-GitHub-Event') == 'issue_comment':
+               print("Event: Comment")
          else:
             print("Client: Skipping request")
-
-
-

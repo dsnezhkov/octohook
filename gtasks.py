@@ -1,50 +1,48 @@
 import glob
 import subprocess
-import shlex 
+import shlex
+
 
 class FileTask:
-	def __init__(self,responder, data):
-		self.responder=responder
-		self.data=data
-	def execute(self):
-		print("FileTask Execute() for agentid {} with data: {} ".format(
-					self.responder.agentid, self.data))
-		response_data=glob.glob(self.data['location'])
-		print("{}".format(response_data))
+    def __init__(self, responder, data):
+        self.responder = responder
+        self.data = data
 
-		self.responder.setData(",".join(response_data))
+    def execute(self):
+        print("FileTask Execute() for agentid {} with data: {} ".format(
+                    self.responder.agentid, self.data))
+        response_data = glob.glob(self.data['location'])
+        print("{}".format(response_data))
+
+        self.responder.setData(",".join(response_data))
+
 
 class ExecLProcessTask:
-	def __init__(self,responder, data):
-		self.responder=responder
-		self.data=data
-	def execute(self):
-		print("ExecProcessTask Execute() for agentid {} with data: {} ".format(
-					self.responder.agentid, self.data))
+    def __init__(self, responder, data):
+        self.responder = responder
+        self.data = data
 
-		process = subprocess.Popen(shlex.split(self.data['command']), 
-						stdout=subprocess.PIPE,  stderr=subprocess.PIPE, shell=True)
-		so, se = process.communicate()
+    def execute(self):
+        print("ExecProcessTask Execute() for agentid {} with data: {} ".format(
+                    self.responder.agentid, self.data))
 
-		response_data=""
-		if process.returncode == 0:
-			# some utilities report progress on stderr, not necessarily and errror
-			if len(se) != 0:
-				#response_data += se.decode("utf-8", "replace")
-				response_data += se
+        process = subprocess.Popen(
+            shlex.split(self.data['command']),
+            stdout=subprocess.PIPE,  stderr=subprocess.PIPE, shell=True)
+        so, se = process.communicate()
 
-			print("Process success: ".format(process.returncode))
-			#response_data += so.decode("utf-8", "replace")
-			response_data += so
-		else:
-			print("Process error: ".format(process.returncode))
-			#response_data=se.decode("utf-8", "replace")
-			response_data=se
+        response_data = ""
+        if process.returncode == 0:
+            # some utilities (eg. curl) report progress on stderr, not error
+            if len(se) != 0:
+                response_data += se
 
-		print("Response: {}".format(response_data))
+            print("Process success: ".format(process.returncode))
+            response_data += so
+        else:
+            print("Process error: ".format(process.returncode))
+            response_data = se
 
-		self.responder.setData(response_data)
-		
+        print("Response: {}".format(response_data))
 
-		
-
+        self.responder.setData(response_data)
