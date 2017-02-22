@@ -88,7 +88,7 @@ class WService(object):
          call=bottle.request.json
          if call is not None:
             # Watch Events
-            gew=GitEventWatcher(self.agentid,self.queue)
+            gew=GitEventWatcher(self.config['client']['general']['boot']['agentid'],self.queue)
             gew.watch_issue_closed(call)
          else:
             print("Client: Skipping request")
