@@ -1,7 +1,7 @@
 import glob
 import subprocess
 import shlex
-
+import delegator
 
 class FileTask:
     def __init__(self, responder, data):
@@ -23,6 +23,31 @@ class ExecLProcessTask:
         self.data = data
 
     def execute(self):
+        print("ExecProcessTask Execute() for agentid {} with data: {} ".
+              format(self.responder.agentid, self.data['command']))
+        rprocess=delegator.chain(self.data['command'])
+
+        so=None
+        se=None
+        response_data=""
+        encoder_error=False
+
+        try:
+            so=rprocess.out
+            se=rprocess.err
+        except UnicodeDecodeError as uee:
+            se="Error in Unicode Decoding of input: " + uee.message
+            encoder_error=True
+
+        if rprocess.subprocess.exitstatus != 0 or encoder_error:
+            response_data=se
+        else:
+            response_data=so
+
+        print("sending to Repnder data: {} ".format(response_data))
+        self.responder.setData(response_data)
+
+    def execute_shell(self):
         print("ExecProcessTask Execute() for agentid {} with data: {} ".format(
                     self.responder.agentid, self.data))
 

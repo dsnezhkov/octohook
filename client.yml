@@ -1,17 +1,15 @@
 ---
 boot: &boot
-   queue_watermark: 100
+   queue_watermark: 10000
    agentid: 'a932e9f5-2501-4c60-b5da-8a61ac244792'
-roles:
 
+roles:
    # Can operate both
    web:
       client: True
       server: False
-
    # Mutually exclusive
    cmd: 'client'
-
 
 github: &github
    git_repo_name: 'exfil1'
