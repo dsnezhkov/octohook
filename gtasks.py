@@ -46,14 +46,14 @@ class ExecLProcessTask:
             se_conv_error=True
 
         if so_conv_error:
-            response_data += "Output Conversion Error"
+            response_data += "Standard Output Conversion Fault"
         else:
             response_data += so
 
         if se_conv_error:
-            response_data += "Output Conversion Error"
+            response_data += "Standard Error Conversion Fault"
         else:
             response_data += se
 
-        print("sending to Responder data: {} ".format(response_data))
+        print("Sending to Responder data: {} ".format(response_data))
         self.responder.setData(response_data)
