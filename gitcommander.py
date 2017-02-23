@@ -1,3 +1,4 @@
+from  __future__ import unicode_literals
 import threading
 import importlib
 import yaml
@@ -26,7 +27,7 @@ class CommandResponder:
         self.task_data = task_data
         print("CommandResponder: Uploading data {} for agent {}"
               "to GH (notify issue {} )".
-              format(self.task_data, self.agentid, self.issue))
+              format(unicode(self.task_data), self.agentid, self.issue))
         self.commentIssue()
         self.closeIssue()
 
