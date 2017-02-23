@@ -304,7 +304,12 @@ class ConCommander2:
         print("Watcher thread init {}".format(t))
         while getattr(t, "do_run", True):
             if not self.data_q.empty():
-                ghlib.checkIssueOutput(self.git_repo, self.data_q.get())
+                comment_list=ghlib.getClosedIssueComments(
+                        self.git_repo,
+                        self.data_q.get())
+                if comment_list:
+                    for comment in comment_list:
+                        print(comment)
             sleep(1)
         print("Watcher thread de-init {}".format(t))
         return

