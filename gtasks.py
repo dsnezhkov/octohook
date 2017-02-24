@@ -53,7 +53,13 @@ class ExecLProcessTask:
             if se_conv_error:
                 response_data += "Standard Error Conversion Fault"
             else:
-                response_data += se
+                if not so_conv_error and not se == so:
+                    response_data += se
+
+            print("Se: {} ".format(se))
+            print("So: {} ".format(so))
+            print("eq?: {} ".format(so == se))
+
         except IOError as ioe:
             response_data += "IOError {}. Check you command syntax".format(ioe)
 

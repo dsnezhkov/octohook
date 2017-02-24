@@ -53,23 +53,23 @@ def web_client_worker(data_q, config):
 
 def threader(config):
     data_queue = Queue(config.boot()['queue_watermark'])
+    config.thread_queue = Queue(3)
 
     if config.roles()['web']['client'] == True:
         wct = threading.Thread(target=web_client_worker,
-                               args=(data_queue, config))
+                            args=(data_queue, config))
         wct.daemon = True
         wct.start()
 
     if config.roles()['web']['server'] == True:
         wst = threading.Thread(target=web_server_worker,
-                               args=(data_queue, config))
+                            args=(data_queue, config))
         wst.daemon = True
         wst.start()
 
     print('Starting Command server, use <Ctrl-D> , `q`, `quit` to quit')
     cst = threading.Thread(target=cmdservice_worker, args=(data_queue, config))
     cst.start()
-
     return
 
 

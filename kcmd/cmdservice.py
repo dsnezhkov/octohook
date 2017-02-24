@@ -237,13 +237,13 @@ class ConCommander2:
         ]
 
     def do_loop(self):
-        self.do_rtm('gshstart')
         history = InMemoryHistory()
         gh_completer = WordCompleter(['execute', 'rtm', 'gshstart', 'gshstop'],
                                ignore_case=True)
         while True:
             if  self.role_server:
-                result = prompt(completer=gh_completer,
+                try:
+                    result = prompt(completer=gh_completer,
                       style=ServerStyle, history=history, vi_mode=True,
                       enable_history_search=True,
                       reserve_space_for_menu=4,
@@ -254,6 +254,9 @@ class ConCommander2:
                       get_rprompt_tokens=self._get_rprompt_tokens,
                       get_bottom_toolbar_tokens=self._get_bottom_toolbar_tokens,
                       patch_stdout=True)
+                except  KeyboardInterrupt as ke:
+                    print("What?")
+
             if  self.role_client:
                 result = prompt(completer=gh_completer,
                       style=ClientStyle, history=history, vi_mode=True,
@@ -267,10 +270,19 @@ class ConCommander2:
                       get_bottom_toolbar_tokens=self._get_bottom_toolbar_tokens,
                       patch_stdout=True)
 
-            print("Command was: ", result)
-            cmdpass=result.split(' ', 1)[1]
-            print("Passing: %s", cmdpass)
-            self.do_execute(cmdpass)
+            if not result:
+                print("Need Command")
+            else:
+                cmdargs=""
+                tokens=result.split(' ')
+                if len(tokens) > 0:
+                    cmd=tokens[0] # get command
+                    print("cmd:[{}]".format(cmd))
+
+                    cmdargs=result.split(' ', 1) # get arguments
+                    if cmd  == 'execute':
+                        self.do_rtm('gshstart')
+                        self.do_execute(cmdargs[1])
 
 
     def setup(self, data_q):
@@ -330,6 +342,7 @@ class ConCommander2:
             if self.git_issue is not None:
                 print("Created task: ({}) - {}".
                       format(self.git_issue.number, self.git_issue.title))
+                self.do_rtm('gshstart')
         else:
             print('Need command')
 
