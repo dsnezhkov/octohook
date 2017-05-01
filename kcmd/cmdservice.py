@@ -277,10 +277,11 @@ class ConCommander2:
                       get_bottom_toolbar_tokens=self._get_bottom_toolbar_tokens,
                       patch_stdout=True)
                 except  KeyboardInterrupt as ke:
-                    print("What?")
+                    print("^D to exit")
 
             if  self.role_client:
-                result = prompt(completer=gh_completer,
+                try:
+                    result = prompt(completer=gh_completer,
                       style=ClientStyle, history=history, vi_mode=True,
                       enable_history_search=True,
                       reserve_space_for_menu=4,
@@ -291,20 +292,44 @@ class ConCommander2:
                       get_prompt_tokens=self._get_prompt_tokens,
                       get_bottom_toolbar_tokens=self._get_bottom_toolbar_tokens,
                       patch_stdout=True)
+                except  KeyboardInterrupt as ke:
+                    print("^D to exit")
 
             if not result:
-                print("Need Command")
+                print("Need a Valid Command")
             else:
                 cmdargs=""
                 tokens=result.split(' ')
+                print("Tokens:" )
+                print(tokens)
+
                 if len(tokens) > 0:
                     cmd=tokens[0] # get command
                     print("cmd:[{}]".format(cmd))
 
-                    cmdargs=result.split(' ', 1) # get arguments
                     if cmd  == 'execute':
-                        self.do_rtm('gshstart')
-                        self.do_execute(cmdargs[1])
+                        cmdargs=result.split(' ', 1) # get arguments
+                        if len(cmdargs) > 0: # Args exist
+                            print("Cmdargs:" )
+                            print(cmdargs)
+                            self.do_rtm('gshstart')
+                            self.do_execute(cmdargs[1])
+                        else:
+                            print("Possibly missing command arguments")
+
+                    elif cmd  == 'put':
+                        cmdargs=result.split(' ', 1) # get arguments
+                        if len(cmdargs) > 0: # Args exist
+                            print("Cmdargs:" )
+                            print(cmdargs)
+                            self.do_rtm('gshstart')
+                            self.do_put(cmdargs[1])
+                        else:
+                            print("Possibly missing command arguments")
+                    else:
+                        print("Unsupported  Command")
+                else:
+                   print("Invalid Command")
 
 
     def setup(self, data_q):
@@ -364,7 +389,7 @@ class ConCommander2:
             if self.git_issue is not None:
                 print("Created task: ({}) - {}".
                       format(self.git_issue.number, self.git_issue.title))
-                self.do_rtm('gshstart')
+                #self.do_rtm('gshstart')
         else:
             print('Need command')
 
@@ -372,11 +397,11 @@ class ConCommander2:
         """put </path/to/file>
         Send `path to file` to server. File uplaoded to GH in agent space """
         if arg:
-            print("Executing {}".format(arg.parsed.dump()))
+            print("Executing {}".format(arg))
             stream = file(os.path.join(self.templatedir, 'putlocal.tmpl'), 'r')
             instructions = load(stream)
             instructions['issue']['body']['request'][0]['putlocal']['location']\
-                = arg.parsed.statement.args
+                = str(arg)
 
             self.git_issue = ghlib.createIssueFromInstructions(
                 self.agentid, self.git_repo, instructions)
@@ -384,7 +409,7 @@ class ConCommander2:
             if self.git_issue is not None:
                 print("Created task: ({}) - {}".
                       format(self.git_issue.number, self.git_issue.title))
-                self.do_rtm('gshstart')
+                #self.do_rtm('gshstart')
         else:
             print('Need /path/to/file on server')
 

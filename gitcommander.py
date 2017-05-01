@@ -4,6 +4,7 @@ import importlib
 import yaml
 from github import Github
 import time
+from os import path
 
 
 class CommandResponder:
@@ -24,12 +25,14 @@ class CommandResponder:
         self.ghrepo = self.ghuser.get_repo(self.ghrepo_name)
         self.ghissue = self.ghrepo.get_issue(self.issue)
 
-    def _recordData(self):
-        pass
-
     def _task_chunks(self, s, n):
         for start in range(0, len(s), n):
             yield s[start:start+n]
+
+    def setFile(self, file_name, file_data):
+        self.ghrepo.create_file(
+             '/agents/' + self.agentid + '/'+ path.basename(file_name),
+            "Issue: " + str(self.ghissue.number), file_data)
 
     def setData(self, task_data):
         # https://developer.github.com/v3/#rate-limiting

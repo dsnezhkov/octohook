@@ -1,20 +1,28 @@
 from  __future__ import unicode_literals
-import glob
-import subprocess
-import shlex
 import delegator
+#import subprocess
+#import shlex
 
 class PutLFileTask:
     def __init__(self, responder, data):
         self.responder = responder
         self.data = data
+        self.file_name = self.data['location']
 
     def execute(self):
-        print("PutLFileTask Execute() for agentid {} with data: {} ".format(
+        file_data=""
+        print("PutLFileTask Put() for agentid {} with data: {} ".format(
                     self.responder.agentid, self.data))
-        response_data = glob.glob(self.data['location'])
-        print("{}".format(response_data))
 
+        try:
+            with open(self.file_name, mode='rb') as f:
+                file_data=f.read()
+        except IOError as err:
+            response_data = "Error reading the file {0}: {1}".format(
+                self.file_name, err)
+
+        response_data = "Will Put file {0} async. Check progress.".format(self.file_name)
+        self.responder.setFile(self.file_name,file_data)
         self.responder.setData(",".join(response_data))
 
 

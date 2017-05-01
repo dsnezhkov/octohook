@@ -14,7 +14,7 @@ roles:
 github: &github
    git_repo_name: 'exfil1'
    git_user_name: 'drtkn'
-   git_app_token: 'dbba5bd20be0a59543762bd19e881d351ce118c7'   
+   git_app_token: 'cb07d47ed051d071386c49f9ac34cd30272390e4' #https://github.com/settings/tokens
 
 client:
    general:
