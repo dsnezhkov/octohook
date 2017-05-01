@@ -4,13 +4,13 @@ import subprocess
 import shlex
 import delegator
 
-class FileTask:
+class PutLFileTask:
     def __init__(self, responder, data):
         self.responder = responder
         self.data = data
 
     def execute(self):
-        print("FileTask Execute() for agentid {} with data: {} ".format(
+        print("PutLFileTask Execute() for agentid {} with data: {} ".format(
                     self.responder.agentid, self.data))
         response_data = glob.glob(self.data['location'])
         print("{}".format(response_data))

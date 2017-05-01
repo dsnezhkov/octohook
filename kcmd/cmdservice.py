@@ -103,7 +103,27 @@ class ConCommander(cmd2.Cmd):
                 print("Created task: ({}) - {}".
                       format(self.git_issue.number, self.git_issue.title))
         else:
-            print('Need command')
+            print('Need command to exec on server')
+
+    def do_put(self, arg):
+        """put </path/to/file/>
+        Send `path to file` to server. File uplaoded to GH in agent space """
+        if arg:
+            print("Executing {}".format(arg.parsed.dump()))
+            stream = file(os.path.join(self.templatedir, 'putlocal.tmpl'), 'r')
+            instructions = load(stream)
+            instructions['issue']['body']['request'][0]['putlocal']['location']\
+                = arg.parsed.statement.args
+
+            self.git_issue = ghlib.createIssueFromInstructions(
+                self.agentid, self.git_repo, instructions)
+
+            if self.git_issue is not None:
+                print("Created task: ({}) - {}".
+                      format(self.git_issue.number, self.git_issue.title))
+        else:
+            print('Need /path/to/file on server')
+
 
     def do_checkoutput(self, task_number):
         """checkoutput <task number>
@@ -238,7 +258,9 @@ class ConCommander2:
 
     def do_loop(self):
         history = InMemoryHistory()
-        gh_completer = WordCompleter(['execute', 'rtm', 'gshstart', 'gshstop'],
+        gh_completer = WordCompleter(
+                ['execute', 'put',
+                 'rtm', 'gshstart', 'gshstop'],
                                ignore_case=True)
         while True:
             if  self.role_server:
@@ -322,7 +344,7 @@ class ConCommander2:
                 if comment_list:
                     for comment in comment_list:
                         print(comment)
-            sleep(1)
+                        sleep(2)  # Pause for polling: GH throttling
         print("Watcher thread de-init {}".format(t))
         return
 
@@ -345,5 +367,26 @@ class ConCommander2:
                 self.do_rtm('gshstart')
         else:
             print('Need command')
+
+    def do_put(self, arg):
+        """put </path/to/file>
+        Send `path to file` to server. File uplaoded to GH in agent space """
+        if arg:
+            print("Executing {}".format(arg.parsed.dump()))
+            stream = file(os.path.join(self.templatedir, 'putlocal.tmpl'), 'r')
+            instructions = load(stream)
+            instructions['issue']['body']['request'][0]['putlocal']['location']\
+                = arg.parsed.statement.args
+
+            self.git_issue = ghlib.createIssueFromInstructions(
+                self.agentid, self.git_repo, instructions)
+
+            if self.git_issue is not None:
+                print("Created task: ({}) - {}".
+                      format(self.git_issue.number, self.git_issue.title))
+                self.do_rtm('gshstart')
+        else:
+            print('Need /path/to/file on server')
+
 
 
