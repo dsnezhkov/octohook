@@ -1,8 +1,8 @@
 from __future__ import print_function
 from __future__ import unicode_literals
-import cmd2
 import threading
 import os
+import logging
 from yaml import load
 from time import sleep
 from github import Github
@@ -10,199 +10,14 @@ import ghlib
 from prompt_toolkit import prompt
 from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.contrib.completers import WordCompleter
-from pygments.style import Style
-from pygments.token import Token
-from pygments.styles.default import DefaultStyle
 import time
 from getpass import getuser
 from socket import gethostname
+from pygments.token import Token
+from cmdlook import ServerStyle, ClientStyle
 
-class ConCommander(cmd2.Cmd):
-    def __init__(self, config):
-        cmd2.Cmd.__init__(self)
-        self.config = config
-
-        if self.config.roles()['cmd'] == 'client':
-            self.prompt = config.client()['cmd']['prompt']
-            self.templatedir = config.client()['cmd']['template_dir']
-
-        if self.config.roles()['cmd'] == 'server':
-            self.prompt = config.server()['cmd']['prompt']
-
-        self.agentid = config.boot()['agentid']
-        self.git_user_name = config.github()['git_user_name']
-        self.git_app_token = config.github()['git_app_token']
-        self.git_repo_name = config.github()['git_repo_name']
-
-    def setup(self, data_q):
-        self.data_q = data_q
-        self.out_watch = None
-
-    def gitshell_watcher(self):
-        t = threading.currentThread()
-        print("Watcher thread init {}".format(t))
-        while getattr(t, "do_run", True):
-            if not self.data_q.empty():
-                ghlib.checkIssueOutput(self.git_repo, self.data_q.get())
-                #self.poutput("RTM")
-                #self.perror("RTM")
-                #self.pfeedback("RTM")
-            sleep(1)
-        print("Watcher thread de-init {}".format(t))
-        return
-
-    def do_rtm(self, comm):
-        """Real Time output monitoring"""
-        print("Command {} received".format(comm))
-
-        if comm == 'gshstart':
-            if self.out_watch is None or (not self.out_watch.isAlive()):
-                self.out_watch = threading.Thread(target=self.gitshell_watcher)
-                self.out_watch.daemon = True
-                print("Starting new thread ({})".format(comm))
-                self.out_watch.start()
-            else:
-                print("Watchdog already running({})".
-                      format(self.out_watch.ident))
-
-        if comm == 'gshstop':
-            print("Wishing to stop thread ({})".format(comm))
-            if self.out_watch is not None and self.out_watch.isAlive():
-                self.out_watch.do_run = False
-                self.out_watch.join()
-            else:
-                print("Watchdog not started")
-
-    def do_rdq(self, line):
-        """Read Data"""
-        if not self.data_q.empty():
-            print(self.data_q.get())
-
-    def do_EOF(self, line):
-        return True
-
-    def postcmd(self, stop, line):
-        if not self.data_q.empty():
-            print("Queued ({}) ".format(self.data_q.qsize()))
-        return stop
-
-    def do_execute(self, arg):
-        """execute <command [arguments]>
-        Send `command` and its arguments to server """
-        if arg:
-            print("Executing {}".format(arg.parsed.dump()))
-            stream = file(os.path.join(self.templatedir, 'execlocal.tmpl'), 'r')
-            instructions = load(stream)
-            instructions['issue']['body']['request'][0]['execlocal']['command']\
-                = arg.parsed.statement.args
-
-            self.git_issue = ghlib.createIssueFromInstructions(
-                self.agentid, self.git_repo, instructions)
-
-            if self.git_issue is not None:
-                print("Created task: ({}) - {}".
-                      format(self.git_issue.number, self.git_issue.title))
-        else:
-            print('Need command to exec on server')
-
-    def do_put(self, arg):
-        """put </path/to/file/>
-        Send `path to file` to server. File uplaoded to GH in agent space """
-        if arg:
-            print("Executing {}".format(arg.parsed.dump()))
-            stream = file(os.path.join(self.templatedir, 'putlocal.tmpl'), 'r')
-            instructions = load(stream)
-            instructions['issue']['body']['request'][0]['putlocal']['location']\
-                = arg.parsed.statement.args
-
-            self.git_issue = ghlib.createIssueFromInstructions(
-                self.agentid, self.git_repo, instructions)
-
-            if self.git_issue is not None:
-                print("Created task: ({}) - {}".
-                      format(self.git_issue.number, self.git_issue.title))
-        else:
-            print('Need /path/to/file on server')
-
-
-    def do_checkoutput(self, task_number):
-        """checkoutput <task number>
-        Check output of `task` from server """
-        if task_number:
-            print("Checking status and output of task ({})".format(task_number))
-            ghlib.checkIssueOutput(self.git_repo, task_number)
-        else:
-            print('Need task number')
-
-    def do_checkstates(self, top=5):
-        """checkstates <number>
-        Check status of tasks"""
-        if top:
-            print("Checking status of {} tasks for agent ({})".
-                  format(top, self.agentid))
-            ghlib.checkIssueStates(self.git_repo, self.agentid, int(top))
-        else:
-            print("Need number of tasks  for agent:{} to check".
-                  format(self.agentid))
-
-    def preloop(self):
-
-        self.git = Github(self.git_user_name, self.git_app_token)
-        self.git_user = self.git.get_user()
-        # print("== List of repos  for user {}...".format(user))
-        # for repo in self.g.get_user().get_repos():
-        # print(repo.name)
-
-        # self.reqfile="./instructions"
-        self.git_repo = ghlib.checkRepoExists(self.git_user, self.git_repo_name)
-        if self.git_repo is None:
-            # repo.create_file('/agent1/filename2', 'commitmessage', 'content')
-            # Create issue with a request
-            self.git_repo = ghlib.createRepo(self.git_user, self.git_repo_name)
-
-
-###################################
-class ServerStyle(Style):
-
-    styles = {
-    Token.Menu.Completions.Completion.Current: 'bg:#00aaaa #000000',
-    Token.Menu.Completions.Completion: 'bg:#008888 #ffffff',
-    Token.Menu.Completions.ProgressButton: 'bg:#003333',
-    Token.Menu.Completions.ProgressBar: 'bg:#00aaaa',
-    # User input.
-    Token:          '#ff0066',
-    Token.Toolbar:  '#000000 bg:#ff6600',
-
-    # Prompt.
-    Token.Username: '#ffffff',
-    Token.At:       '#00aa00',
-    Token.Marker:   '#00aa00',
-    Token.Host:     '#008888',
-    Token.DTime:    '#884444 underline',
-    }
-    styles.update(DefaultStyle.styles)
-
-class ClientStyle(Style):
-
-    styles = {
-    Token.Menu.Completions.Completion.Current: 'bg:#00aaaa #000000',
-    Token.Menu.Completions.Completion: 'bg:#008888 #ffffff',
-    Token.Menu.Completions.ProgressButton: 'bg:#003333',
-    Token.Menu.Completions.ProgressBar: 'bg:#00aaaa',
-    # User input.
-    Token:          '#ff0066',
-    Token.Toolbar:  '#000000 bg:#ffcc66',
-
-    # Prompt.
-    Token.Username: '#884444',
-    Token.At:       '#00aa00',
-    Token.Marker:   '#00aa00',
-    Token.Host:     '#008888',
-    Token.DTime:    '#884444 underline',
-    }
-    styles.update(DefaultStyle.styles)
-
-
+from prompt_toolkit.shortcuts import clear
+from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 
 class ConCommander2:
     def __init__(self, config):
@@ -224,13 +39,13 @@ class ConCommander2:
         self.git_repo_name = config.github()['git_repo_name']
         self.git = Github(self.git_user_name, self.git_app_token)
         self.git_user = self.git.get_user()
-        # print("== List of repos  for user {}...".format(user))
-        # for repo in self.g.get_user().get_repos():
-        # print(repo.name)
+        logging.debug("== List of repos  for user {}...".format(self.git_user))
+        #for repo in self.g.get_user().get_repos():
+        #    logging.debug(repo.name)
 
         self.git_repo = ghlib.checkRepoExists(self.git_user, self.git_repo_name)
         if self.git_repo is None:
-            # repo.create_file('/agent1/filename2', 'commitmessage', 'content')
+            # repo.create_file('/agents/UUID/filename', 'commitmessage', 'content')
             # Create issue with a request
             self.git_repo = ghlib.createRepo(self.git_user, self.git_repo_name)
 
@@ -256,17 +71,24 @@ class ConCommander2:
             (Token.DTime, tb_time),
         ]
 
+    def _get_title(self):
+        return 'OctoHook'
+
     def do_loop(self):
         history = InMemoryHistory()
-        gh_completer = WordCompleter(
-                ['execute', 'put',
-                 'rtm', 'gshstart', 'gshstop'],
-                               ignore_case=True)
+        gh_completer_client = WordCompleter(
+            ['execute', 'put', 'checkissues', 'viewissue', 'rtm', 'clear'],
+            ignore_case=True, match_middle=True)
+        gh_completer_server = WordCompleter(
+            ['clear'],
+            ignore_case=True, match_middle=True)
+
         while True:
+            result=None
             if  self.role_server:
                 try:
-                    result = prompt(completer=gh_completer,
-                      style=ServerStyle, history=history, vi_mode=True,
+                    result = prompt(completer=gh_completer_server,
+                      style=ServerStyle, vi_mode=True,
                       enable_history_search=True,
                       reserve_space_for_menu=4,
                       complete_while_typing=True,
@@ -275,14 +97,20 @@ class ConCommander2:
                       get_prompt_tokens=self._get_prompt_tokens,
                       get_rprompt_tokens=self._get_rprompt_tokens,
                       get_bottom_toolbar_tokens=self._get_bottom_toolbar_tokens,
+                      enable_system_bindings=True,
+                      get_title=self._get_title,
+                      history = history,
+                      auto_suggest=AutoSuggestFromHistory(),
                       patch_stdout=True)
-                except  KeyboardInterrupt as ke:
-                    print("^D to exit")
+                except  KeyboardInterrupt:
+                    logging.warning("^D to exit")
+                except  EOFError:
+                    return
 
             if  self.role_client:
                 try:
-                    result = prompt(completer=gh_completer,
-                      style=ClientStyle, history=history, vi_mode=True,
+                    result = prompt(completer=gh_completer_client,
+                      style=ClientStyle, vi_mode=True,
                       enable_history_search=True,
                       reserve_space_for_menu=4,
                       complete_while_typing=True,
@@ -291,45 +119,77 @@ class ConCommander2:
                       wrap_lines=True,
                       get_prompt_tokens=self._get_prompt_tokens,
                       get_bottom_toolbar_tokens=self._get_bottom_toolbar_tokens,
+                      enable_system_bindings=True,
+                      get_title=self._get_title,
+                      history = history,
+                      auto_suggest=AutoSuggestFromHistory(),
                       patch_stdout=True)
-                except  KeyboardInterrupt as ke:
-                    print("^D to exit")
+                except  KeyboardInterrupt:
+                    logging.warning("^D to exit")
+                except  EOFError:
+                    return
 
             if not result:
-                print("Need a Valid Command")
+                logging.error("Need a Valid Command")
             else:
                 cmdargs=""
                 tokens=result.split(' ')
-                print("Tokens:" )
-                print(tokens)
 
                 if len(tokens) > 0:
                     cmd=tokens[0] # get command
-                    print("cmd:[{}]".format(cmd))
+                    logging.debug("cmd:[{}]".format(cmd))
 
-                    if cmd  == 'execute':
+                    if cmd == 'clear':
+                        clear()
+                    elif cmd == 'help':
+                        print("""
+                              System: Alt-!
+                              Exit: Ctlr-D
+                              Skip: Ctrl-C
+                              Search: Vi mode standard
+                              """)
+                    elif cmd  == 'execute':
                         cmdargs=result.split(' ', 1) # get arguments
-                        if len(cmdargs) > 0: # Args exist
-                            print("Cmdargs:" )
-                            print(cmdargs)
-                            self.do_rtm('gshstart')
+                        if len(cmdargs) > 1: # Args exist
+                            logging.debug("Cmdargs:" )
+                            logging.debug(cmdargs)
+                            self.do_rtm('on')
                             self.do_execute(cmdargs[1])
                         else:
-                            print("Possibly missing command arguments")
+                            logging.error("Missing command arguments")
 
+                    elif cmd  == 'rtm':
+                        if len(tokens)  == 2:
+                            comm=tokens[1]
+                            self.do_rtm(comm)
+                        else:
+                            logging.error("Missing command arguments")
                     elif cmd  == 'put':
                         cmdargs=result.split(' ', 1) # get arguments
                         if len(cmdargs) > 0: # Args exist
-                            print("Cmdargs:" )
-                            print(cmdargs)
-                            self.do_rtm('gshstart')
+                            logging.debug("Cmdargs:" )
+                            logging.debug(cmdargs)
+                            self.do_rtm('on')
                             self.do_put(cmdargs[1])
                         else:
-                            print("Possibly missing command arguments")
+                            logging.error("Missing command arguments")
+                    elif cmd  == 'checkissues':
+                        top=5 # top issue to display states for
+                        ghlib.checkIssueStates(self.git_repo,
+                                                    self.agentid, top)
+                    elif cmd  == 'viewissue':
+                        if len(tokens)  == 2:
+                            issue_number=tokens[1]
+                            comments_contents=ghlib.getClosedIssueComments(
+                                self.git_repo, issue_number)
+                            for x in comments_contents:
+                                print(x)
+                        else:
+                            logging.error("Need Issue number ")
                     else:
-                        print("Unsupported  Command")
+                        logging.error("Unsupported  Command")
                 else:
-                   print("Invalid Command")
+                   logging.error("Invalid Command")
 
 
     def setup(self, data_q):
@@ -338,29 +198,29 @@ class ConCommander2:
 
     def do_rtm(self, comm):
         """Real Time output monitoring"""
-        print("Command {} received".format(comm))
+        logging.debug("Command {} received".format(comm))
 
-        if comm == 'gshstart':
+        if comm == 'on':
             if self.out_watch is None or (not self.out_watch.isAlive()):
                 self.out_watch = threading.Thread(target=self.gitshell_watcher)
                 self.out_watch.daemon = True
-                print("Starting new thread ({})".format(comm))
+                logging.debug("Starting new watcher thread ({})".format(comm))
                 self.out_watch.start()
             else:
-                print("Watchdog already running({})".
+                logging.warning("Watchdog already running({})".
                       format(self.out_watch.ident))
 
-        if comm == 'gshstop':
-            print("Wishing to stop thread ({})".format(comm))
+        if comm == 'off':
+            logging.info("User wish to stop watcher thread ({})".format(comm))
             if self.out_watch is not None and self.out_watch.isAlive():
                 self.out_watch.do_run = False
                 self.out_watch.join()
             else:
-                print("Watchdog not started")
+                logging.warning("Watchdog not started")
 
     def gitshell_watcher(self):
         t = threading.currentThread()
-        print("Watcher thread init {}".format(t))
+        logging.debug("Watcher thread init {}".format(t))
         while getattr(t, "do_run", True):
             if not self.data_q.empty():
                 comment_list=ghlib.getClosedIssueComments(
@@ -370,14 +230,14 @@ class ConCommander2:
                     for comment in comment_list:
                         print(comment)
                         sleep(2)  # Pause for polling: GH throttling
-        print("Watcher thread de-init {}".format(t))
+        logging.debug("Watcher thread de-init {}".format(t))
         return
 
     def do_execute(self, arg):
         """execute <command [arguments]>
         Send `command` and its arguments to server """
         if arg:
-            print("Executing {}".format(arg))
+            logging.info("Executing {}".format(arg))
             stream = file(os.path.join(self.templatedir, 'execlocal.tmpl'), 'r')
             instructions = load(stream)
             instructions['issue']['body']['request'][0]['execlocal']['command']\
@@ -387,17 +247,17 @@ class ConCommander2:
                 self.agentid, self.git_repo, instructions)
 
             if self.git_issue is not None:
-                print("Created task: ({}) - {}".
+                logging.debug("Created task: ({}) - {}".
                       format(self.git_issue.number, self.git_issue.title))
-                #self.do_rtm('gshstart')
+                #self.do_rtm('on')
         else:
-            print('Need command')
+            logging.error('Need some command')
 
     def do_put(self, arg):
         """put </path/to/file>
         Send `path to file` to server. File uplaoded to GH in agent space """
         if arg:
-            print("Executing {}".format(arg))
+            logging.info("Executing {}".format(arg))
             stream = file(os.path.join(self.templatedir, 'putlocal.tmpl'), 'r')
             instructions = load(stream)
             instructions['issue']['body']['request'][0]['putlocal']['location']\
@@ -407,11 +267,11 @@ class ConCommander2:
                 self.agentid, self.git_repo, instructions)
 
             if self.git_issue is not None:
-                print("Created task: ({}) - {}".
+                logging.debug("Created task: ({}) - {}".
                       format(self.git_issue.number, self.git_issue.title))
-                #self.do_rtm('gshstart')
+                #self.do_rtm('on')
         else:
-            print('Need /path/to/file on server')
+            logging.error('Need /path/to/file on server')
 
 
 

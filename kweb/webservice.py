@@ -2,7 +2,7 @@ from __future__ import print_function
 import bottle
 import yaml
 from gitcommander import CommandParser, GitEventWatcher
-
+import logging
 
 class SSLWSGIRefServer(bottle.ServerAdapter):
     def run(self, handler):
@@ -24,7 +24,7 @@ class SSLWSGIRefServer(bottle.ServerAdapter):
                 )
             srv.serve_forever()
         except IOError as e:
-            print("Unable to open Certificate file at location {} {}".
+            logging.error("Unable to open Certificate file at location {} {}".
                   format(self.certfile, e))
             raise
 
@@ -44,7 +44,7 @@ class WService(object):
          # No need to load JSON from body string, it;s pre-parsed by bottle...
          call = bottle.request.json
          if 'action' in call:
-            print("Incoming request: {}".format(call['action']))
+            logging.debug("Incoming request: {}".format(call['action']))
             if call['action'] == 'labeled':
                # process newly created issue
                if 'issue' in call:
@@ -58,21 +58,21 @@ class WService(object):
 
                            # what is this agent's instructions
                            body = yaml.load(call['issue']['body'])
-                           print("Instructions from: ({}) : ".format(agentid))
+                           logging.debug("Instructions from: ({}) : ".format(agentid))
                            c = CommandParser(self.config, agentid, issue)
                            c.parse(body)
                         except yaml.scanner.ScannerError as yse:
-                           print("This body of this issue cannot be parsed: {}".
+                           logging.error("This body of this issue cannot be parsed: {}".
                                  format(yse))
-                           print(call['issue']['body'])
+                           logging.debug(call['issue']['body'])
                   else:
-                     print("This issue does not have a body or named labels")
+                     logging.error("This issue does not have a body or named labels")
                else:
-                  print("This call is not a valid labeled issue")
+                  logging.error("This call is not a valid labeled issue")
             else:
-               print("This call is not a labeled issue")
+               logging.error("This call is not a labeled issue")
          else:
-            print("This call has no action")
+            logging.error("This call has no action")
 
     def exf_client(self):
       if bottle.request.method == 'POST':
@@ -83,9 +83,9 @@ class WService(object):
 
          call=bottle.request.json
          if call is not None:
-            print("X-GitHub-Event: {}".format(
+            logging.debug("X-GitHub-Event: {}".format(
                     bottle.request.get_header('X-GitHub-Event')))
-            print("Agent: {}".format(
+            logging.debug("Agent: {}".format(
                 self.config.client()['general']['boot']['agentid']))
             # Watch Events
             gew = GitEventWatcher(
@@ -96,4 +96,4 @@ class WService(object):
             # if bottle.request.get_header('X-GitHub-Event') == 'issue_comment':
             #   print("Event: Comment")
          else:
-            print("Client: Skipping request")
+            logging.debug("Client: Skipping request")

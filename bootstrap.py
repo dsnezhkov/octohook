@@ -7,14 +7,15 @@ import yaml
 from Queue import Queue
 from kweb.webservice import SSLWSGIRefServer, WService
 from kweb.webrouter import WRouter
-from kcmd.cmdservice import ConCommander, ConCommander2
+from kcmd.cmdservice import ConCommander2
 from kutil.configuration import Configurator
+import atexit
+import logging
 
+def quit_gracefully():
+    logging.info('Bye')
 
 def cmdservice_worker(data_q, config):
-    #cc = ConCommander(config)
-    #cc.setup(data_q)
-    #cc.cmdloop()
     cc2 = ConCommander2(config)
     cc2.setup(data_q)
     cc2.do_loop()
@@ -27,7 +28,7 @@ def web_server_worker(data_q, config):
     wrouter.route_server()
 
     # Start SSL-wrapped bottle
-    print('Starting Webservice server (daemon) ')
+    logging.info('Starting Webservice server (daemon) ')
     sslsrv = SSLWSGIRefServer(host=config.server()['web']['host'],
                               port=config.server()['web']['port'])
     bottle.run(server=sslsrv, debug=config.server()['web']['debug'],
@@ -44,7 +45,7 @@ def web_client_worker(data_q, config):
     # Start SSL-wrapped bottle
     sslsrv = SSLWSGIRefServer(host=config.client()['web']['host'],
                               port=config.client()['web']['port'])
-    print('Starting Webservice client (daemon) ')
+    logging.info('Starting Webservice client (daemon) ')
     bottle.run(server=sslsrv, debug=config.client()['web']['debug'],
                quiet=config.client()['web']['quiet'])
 
@@ -67,7 +68,7 @@ def threader(config):
         wst.daemon = True
         wst.start()
 
-    print('Starting Command server, use <Ctrl-D> , `q`, `quit` to quit')
+    logging.info('Starting Command server, use <Ctrl-D> , `q`, `quit` to quit')
     cst = threading.Thread(target=cmdservice_worker, args=(data_queue, config))
     cst.start()
     return
@@ -75,17 +76,19 @@ def threader(config):
 
 def bootstrap(startargs):
     if len(sys.argv) != 2:
-        raise Exception("Need config File")
+        logging.critical("Need config File")
+        return
 
     cfgfile = startargs[1]
 
-    print("Trying to load from {}".format(cfgfile))
+    logging.debug("Trying to load from {}".format(cfgfile))
     try:
         with open(cfgfile, 'r') as ymlfile:
             config = Configurator(yaml.load(ymlfile))
         threader(config)
     except IOError as e:
-        print("Unable to open config file {}".format(e))
+        logging.critical("Unable to open config file {}".format(e))
 
 if __name__ == '__main__':
+    atexit.register(quit_gracefully)
     bootstrap(sys.argv)

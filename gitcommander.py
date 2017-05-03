@@ -5,7 +5,7 @@ import yaml
 from github import Github
 import time
 from os import path
-
+import logging
 
 class CommandResponder:
 
@@ -14,7 +14,7 @@ class CommandResponder:
         self.agentid = agentid
         self.issue = issue
 
-        #print(yaml.dump(config))
+        logging.debug(yaml.dump(config))
 
         self.ghuser_name = config.github()['git_user_name']
         self.ghtoken = config.github()['git_app_token']
@@ -39,9 +39,12 @@ class CommandResponder:
         comment_dlimit=65536
         wait_rlimit=2 # 2 seconds
 
-        print("CommandResponder: Uploading data size {} for agent {}"
+        logging.debug("CommandResponder: Uploading data size {} for agent {}"
               "to GH (notify issue {} )".
               format(len(task_data), self.agentid, self.issue))
+        # We can get no output from a command, fill in the blank for API.
+        if len(task_data) == 0:
+            task_data="No Output"
         # We can hit the limit of comment post. Split the output
         if len(task_data) < comment_dlimit:
             self.commentIssue(task_data)
@@ -54,11 +57,11 @@ class CommandResponder:
 
     def commentIssue(self, task_data):
         self.ghissue.create_comment(task_data)
-        print("CommandResponder: Comment made on Issue")
+        logging.debug("CommandResponder: Comment made on Issue")
 
     def closeIssue(self):
         self.ghissue.edit(state="closed")
-        print("CommandResponder: Issue closed ")
+        logging.debug("CommandResponder: Issue closed ")
 
 
 class CommandRouter:
@@ -86,6 +89,7 @@ class GitEventWatcher:
         self.agentid = agentid
         self.queue = queue
 
+    """ Check for proper GH call format  """
     def watch_issue_closed(self, call):
 
         if 'action' in call:
@@ -96,7 +100,7 @@ class GitEventWatcher:
               'name' in call['issue']['labels'][0] and \
               call['issue']['labels'][0]['name'] == self.agentid:
 
-                print("Client: Ag:{} Is:{} Ac:{}".format(
+                logging.debug("Client: Ag:{} Is:{} Ac:{}".format(
                     call['issue']['labels'][0]['name'],
                     call['issue']['number'],
                     call['action'],
@@ -104,7 +108,7 @@ class GitEventWatcher:
                 )
                 self.queue.put(call['issue']['number'])
         else:
-            print("Client: This call has no action")
+            logging.error("Client: This call has no action")
             return False
 
 
@@ -118,15 +122,15 @@ class CommandParser:
     def parse(self, request):
 
         if 'request' in request:
-            print("CommandParser: Request received {}".
+            logging.debug("CommandParser: Request received {}".
                   format(request['request']))
             if len(request['request']) == 0 or len(request['request']) > 10:
-                print("CommandParser: number of commands in request "
+                logging.error("CommandParser: number of commands in request "
                       "needs to be 1...10")
 
             else:
                 for command in request['request']:
-                    print(command)
+                    logging.debug(command)
                     cmd_switcher = {
                         'putlocal': 'putlocal',
                         'execlocal': 'execlocal'
@@ -135,8 +139,8 @@ class CommandParser:
                     getattr(CommandParser(self.config, self.agentid, self.issue),
                             str(cmd))(command)
         else:
-            print("CommandParser: Invalid request. no 'request' directive?")
-            print(yaml.dump(request))
+            logging.error("CommandParser: Invalid request. no 'request' directive?")
+            logging.debug(yaml.dump(request))
 
     # Put()'ing content via <file> resource on server
     # {'put':
@@ -147,7 +151,7 @@ class CommandParser:
     # }
     def putlocal(self, command):
         cmd_params = command[CommandParser.putlocal.__name__]
-        print("CommandParser: Executing Local put: {}".format(cmd_params))
+        logging.info("CommandParser: Executing put: {}".format(cmd_params))
         # {'resource': 'file'}
         if 'resource' in cmd_params:
             res_switcher = {
@@ -157,7 +161,7 @@ class CommandParser:
             getattr(CommandParser(self.config, self.agentid, self.issue),
                     str(cmd))(cmd_params)
         else:
-            print("CommandParser: No resource specified: {}".format(cmd_params))
+            logging.error("CommandParser: No resource specified: {}".format(cmd_params))
 
     # Put()'ing content via <file> resource on server
     # {'put':
@@ -167,7 +171,7 @@ class CommandParser:
     #   }
     # }
     def f_putlocal(self, cmd_params):
-        print("CommandParser: Executing Local put -> file: {}".
+        logging.debug("CommandParser: Executing put on file: {}".
               format(cmd_params))
 
         if 'location' in cmd_params:
@@ -176,12 +180,12 @@ class CommandParser:
             thread = threading.Thread(target=crouter.run)
             thread.start()
         else:
-            print("CommandParser: No method specified: {}".format(cmd_params))
+            logging.error("CommandParser: No method specified: {}".format(cmd_params))
 
 
     # Exec()'ing <command> on server
     def execlocal(self, command):
-        print("CommandParser: Executing Local exec: {}".format(command))
+        logging.debug("CommandParser: Executing Local exec: {}".format(command))
         cmd_params = command[CommandParser.execlocal.__name__]
         if 'resource' in cmd_params:
             res_switcher = {
@@ -191,11 +195,11 @@ class CommandParser:
             getattr(CommandParser(self.config, self.agentid, self.issue),
                     str(cmd))(cmd_params)
         else:
-            print("CommandParser: No resource specified: {}".format(cmd_params))
+            logging.error("CommandParser: No resource specified: {}".format(cmd_params))
 
     # Exec()'ing <command> via <process> resource on server
     def c_execlocal(self, cmd_params):
-        print("CommandParser: Executing Local exec -> process: {}".
+        logging.debug("CommandParser: Executing Local exec -> process: {}".
               format(cmd_params))
 
         if 'command' in cmd_params:
@@ -204,13 +208,13 @@ class CommandParser:
             thread = threading.Thread(target=crouter.run)
             thread.start()
         else:
-            print("CommandParser: No method specified: {}".format(cmd_params))
+            logging.error("CommandParser: No method specified: {}".format(cmd_params))
 
     def nosuchcommand(self, command):
-        print("CommandParser: No such command {}".format(command))
+        logging.error("CommandParser: No such command {}".format(command))
 
     def nosuchresource(self, command):
-        print("CommandParser: No such resource {}".format(command))
+        logging.error("CommandParser: No such resource {}".format(command))
 
     def nosuchfilemethod(self, command):
-        print("CommandParser: No such file method {}".format(command))
+        logging.error("CommandParser: No such file method {}".format(command))

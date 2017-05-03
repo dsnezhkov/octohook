@@ -1,15 +1,15 @@
 from github.GithubException import GithubException, UnknownObjectException
 from github.GithubObject import NotSet
 from yaml import load, dump, scanner
-
+import logging
 
 def checkRepoExists(user, repo_name):
     repo = None
     try:
         repo = user.get_repo(repo_name)
-        print("Repo {} exists".format(repo.name))
+        logging.debug("Repo {} exists".format(repo.name))
     except GithubException as ge:
-        print("Unable to find Repo: status:{}, data:{}".
+        logging.warning("Unable to find Repo: status:{}, data:{}".
               format(ge.status, ge.data))
 
     return repo
@@ -18,7 +18,7 @@ def checkRepoExists(user, repo_name):
 def createRepo(user, repo):
     repo = None
     try:
-        print("Creating repo {}...".format(repo))
+        logging.info("Creating repo {}...".format(repo))
         repo = user.create_repo(repo, description="Exfil 1",
                                 homepage=NotSet, private=False,
                                 has_issues=True,
@@ -26,17 +26,17 @@ def createRepo(user, repo):
                                 auto_init=True,
                                 gitignore_template=NotSet)
 
-        print("Created repo {}...".format(repo.name))
+        logging.info("Created repo {}...".format(repo.name))
         return repo
 
     except GithubException as ge:
-        print("Unable to create repo {}...".format(repo))
-        print("status:{}, data:{}".format(ge.status, ge.data))
+        logging.error("Unable to create repo {}...".format(repo))
+        logging.debug("status:{}, data:{}".format(ge.status, ge.data))
 
 
 def createIssueFromInstructions(agentid, repo, instructions):
     try:
-        print(dump(instructions))
+        logging.debug(dump(instructions))
 
         issue_title = instructions["issue"]["title"]
         issue_body = instructions["issue"]["body"]
@@ -46,27 +46,28 @@ def createIssueFromInstructions(agentid, repo, instructions):
                                   labels=[issue_label])
         return issue
     except scanner.ScannerError as yse:
-        print("Error: {}".format(yse))
+        logging.error("Scanner Error: {}".format(yse))
 
 
 def createIssueFromFile(agentid, repo, reqfile):
     try:
         stream = file(reqfile, 'r')
         instructions = load(stream)
-        print(dump(instructions))
+        logging.debug(dump(instructions))
 
         issue_title = instructions["issue"]["title"]
         issue_body = instructions["issue"]["body"]
-        # print type(dump(issue_body))
+
+        logging.debug(type(dump(issue_body)))
         issue_label = agentid
 
         issue = repo.create_issue(title=issue_title, body=dump(issue_body),
                                   labels=[issue_label])
         return issue
     except IOError as ioe:
-        print("Error: {}".format(ioe))
+        logging.error("I/O Error: {}".format(ioe))
     except scanner.ScannerError as yse:
-        print("Error: {}".format(yse))
+        logging.error("Scanner Error: {}".format(yse))
 
 
 def getClosedIssueComments(repo, issue_number):
@@ -74,14 +75,14 @@ def getClosedIssueComments(repo, issue_number):
     try:
         issue = repo.get_issue(int(issue_number))
         if issue.state == "open":
-            print("Issue {} is stil OPEN".format(issue.title))
+            logging.warning("Issue {} is stil OPEN".format(issue.title))
         else:
-            print("Issue ({}:{}) - {} ".format(issue.number,
+            logging.info("Issue ({}:{}) - {} ".format(issue.number,
                                                issue.state, issue.title))
             for comment in issue.get_comments():
                 comment_contents.append(comment.body)
     except UnknownObjectException as ue:
-        print("Unable to find Issue: {}, {}".format(issue_number, ue))
+        logging.error("Error: Unable to find Issue: {}, {}".format(issue_number, ue))
 
     return comment_contents
 

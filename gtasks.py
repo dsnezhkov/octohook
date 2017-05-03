@@ -1,5 +1,6 @@
 from  __future__ import unicode_literals
 import delegator
+import logging
 #import subprocess
 #import shlex
 
@@ -11,7 +12,7 @@ class PutLFileTask:
 
     def execute(self):
         file_data=""
-        print("PutLFileTask Put() for agentid {} with data: {} ".format(
+        logging.debug("PutLFileTask Put() for agentid {} with data: {} ".format(
                     self.responder.agentid, self.data))
 
         try:
@@ -32,7 +33,7 @@ class ExecLProcessTask:
         self.data = data
 
     def execute(self):
-        print("ExecProcessTask Execute() for agentid {} with data: {} ".
+        logging.debug("ExecProcessTask Execute() for agentid {} with data: {} ".
               format(self.responder.agentid, self.data['command']))
         response_data=""
 
@@ -64,12 +65,12 @@ class ExecLProcessTask:
                 if not so_conv_error and not se == so:
                     response_data += se
 
-            print("Se: {} ".format(se))
-            print("So: {} ".format(so))
-            print("eq?: {} ".format(so == se))
+            logging.debug("Se: {} ".format(se))
+            logging.debug("So: {} ".format(so))
+            logging.debug("eq?: {} ".format(so == se))
 
         except IOError as ioe:
             response_data += "IOError {}. Check you command syntax".format(ioe)
 
-        print("Sending to Responder data: {} ".format(response_data))
+        logging.debug("Sending to Responder data: {} ".format(response_data))
         self.responder.setData(response_data)
