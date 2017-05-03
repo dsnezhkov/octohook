@@ -1,0 +1,44 @@
+2017-05-03 14:05:10,042:INFO:Starting Command server, use <Ctrl-D> , `q`, `quit` to quit
+2017-05-03 14:05:10,043:INFO:Starting Webservice client (daemon) 
+2017-05-03 14:05:18,244:INFO:Starting Command server, use <Ctrl-D> , `q`, `quit` to quit
+2017-05-03 14:05:18,245:INFO:Starting Webservice server (daemon) 
+2017-05-03 14:05:24,420:INFO:Executing ls
+2017-05-03 14:05:24,921:INFO:Created task: (549) - OS Exec
+2017-05-03 14:05:25,132:INFO:Instructions from Agent (a932e9f5-2501-4c60-b5da-8a61ac244792) Issue (549) 
+2017-05-03 14:05:25,133:INFO:CommandParser: Executing Local exec: {'execlocal': {'command': 'ls', 'resource': 'process'}}
+2017-05-03 14:05:28,373:ERROR:Need a Valid Command
+2017-05-03 14:05:28,511:ERROR:Need a Valid Command
+2017-05-03 14:08:08,172:INFO:Bye
+2017-05-03 14:08:09,300:INFO:Starting Command server, use <Ctrl-D> , `q`, `quit` to quit
+2017-05-03 14:08:09,301:INFO:Starting Webservice client (daemon) 
+2017-05-03 14:08:11,470:ERROR:Unsupported  Command
+2017-05-03 14:14:13,207:INFO:Bye
+2017-05-03 14:14:14,239:INFO:Starting Command server, use <Ctrl-D> , `q`, `quit` to quit
+2017-05-03 14:14:14,241:INFO:Starting Webservice client (daemon) 
+2017-05-03 14:14:17,179:INFO:Executing ls
+2017-05-03 14:14:17,499:INFO:Created task: (550) - OS Exec
+2017-05-03 14:14:18,130:INFO:Instructions from Agent (a932e9f5) Issue (550) 
+2017-05-03 14:14:18,131:INFO:CommandParser: Executing Local exec: {'execlocal': {'command': 'ls', 'resource': 'process'}}
+2017-05-03 14:55:11,529:INFO:Bye
+2017-05-03 14:55:13,172:INFO:Starting Command server, use <Ctrl-D> , `q`, `quit` to quit
+2017-05-03 14:55:13,173:INFO:Starting Webservice client (daemon) 
+2017-05-03 14:55:16,377:INFO:Bye
+2017-05-03 14:55:18,816:INFO:Starting Command server, use <Ctrl-D> , `q`, `quit` to quit
+2017-05-03 14:55:18,817:INFO:Starting Webservice server (daemon) 
+2017-05-03 15:00:46,921:INFO:Bye
+2017-05-03 15:00:47,974:INFO:Starting Command server, use <Ctrl-D> , `q`, `quit` to quit
+2017-05-03 15:00:47,975:INFO:Starting Webservice server (daemon) 
+2017-05-03 15:00:54,330:INFO:Executing ls -l
+2017-05-03 15:00:54,562:INFO:Created task: (551) - OS Exec
+2017-05-03 15:00:54,789:INFO:Instructions from Agent (a932e9f5) Issue (551) 
+2017-05-03 15:00:54,790:INFO:CommandParser: Executing Local exec: {'execlocal': {'command': 'ls -l', 'resource': 'process'}}
+2017-05-03 15:01:15,551:INFO:Issue (551:closed) - OS Exec 
+2017-05-03 15:56:23,764:INFO:Bye
+2017-05-03 15:56:24,937:INFO:Starting Command server, use <Ctrl-D> , `q`, `quit` to quit
+2017-05-03 15:56:24,938:INFO:Starting Webservice client (daemon) 
+2017-05-03 15:56:30,692:INFO:Bye
+2017-05-03 15:57:49,997:INFO:Starting Command server, use <Ctrl-D> , `q`, `quit` to quit
+2017-05-03 15:57:50,007:INFO:Starting Webservice client (daemon) 
+2017-05-03 15:58:07,597:INFO:Bye
+2017-05-03 15:58:08,472:INFO:Starting Command server, use <Ctrl-D> , `q`, `quit` to quit
+2017-05-03 15:58:08,472:INFO:Starting Webservice server (daemon) 

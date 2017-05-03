@@ -8,7 +8,7 @@ from Queue import Queue
 from kweb.webservice import SSLWSGIRefServer, WService
 from kweb.webrouter import WRouter
 from kcmd.cmdservice import ConCommander2
-from kutil.configuration import Configurator
+from klib.configuration import Configurator
 import atexit
 import logging
 
@@ -80,7 +80,24 @@ def bootstrap(startargs):
         return
 
     cfgfile = startargs[1]
+    logo="""
 
+ _________________________________________________________________
+ |____|____|____|____|____|____|____|____|____|____|____|____|____
+ ____|____|____|____|____|____|____|____|____|____|____|____|____|
+             ____         __          __  __               __
+            / __ \ _____ / /_ ____   / / / /____   ____   / /__
+           / / / // ___// __// __ \ / /_/ // __ \ / __ \ / //_/
+          / /_/ // /__ / /_ / /_/ // __  // /_/ // /_/ // ,<
+          \____/ \___/ \__/ \____//_/ /_/ \____/ \____//_/|_|
+                        When Cats Have 9 lives....
+
+ _________________________________________________________________
+ |____|____|____|____|____|____|____|____|____|____|____|____|___|_
+  ___|____|____|____|____|____|____|____|____|____|____|____|____|_
+
+    """
+    print(logo)
     logging.debug("Trying to load from {}".format(cfgfile))
     try:
         with open(cfgfile, 'r') as ymlfile:
@@ -90,5 +107,8 @@ def bootstrap(startargs):
         logging.critical("Unable to open config file {}".format(e))
 
 if __name__ == '__main__':
+    logging.basicConfig(filename='logs/octohook.log',
+                        format='%(asctime)s:%(levelname)s:%(message)s',
+                        level=logging.INFO)
     atexit.register(quit_gracefully)
     bootstrap(sys.argv)

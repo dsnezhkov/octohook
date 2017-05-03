@@ -6,7 +6,7 @@ import logging
 from yaml import load
 from time import sleep
 from github import Github
-import ghlib
+from klib import ghlib
 from prompt_toolkit import prompt
 from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.contrib.completers import WordCompleter
@@ -27,10 +27,12 @@ class ConCommander2:
 
         if self.config.roles()['cmd'] == 'client':
             self.role_client=True
+            self.role_human="Client"
             self.templatedir = config.client()['cmd']['template_dir']
 
         if self.config.roles()['cmd'] == 'server':
             self.role_server=True
+            self.role_human="Server"
 
 
         self.agentid = config.boot()['agentid']
@@ -39,6 +41,10 @@ class ConCommander2:
         self.git_repo_name = config.github()['git_repo_name']
         self.git = Github(self.git_user_name, self.git_app_token)
         self.git_user = self.git.get_user()
+
+        self.git_cissue=0
+        self.rtm_poll_freq=3
+
         logging.debug("== List of repos  for user {}...".format(self.git_user))
         #for repo in self.g.get_user().get_repos():
         #    logging.debug(repo.name)
@@ -51,8 +57,10 @@ class ConCommander2:
 
     def _get_bottom_toolbar_tokens(self, cli):
 
+        tcontent='[{}] Task: {}'.format(self.role_human, self.git_cissue)
+
         return [
-            (Token.Toolbar, "Client" if self.role_client else "Server" ),
+            (Token.Toolbar, tcontent ),
         ]
 
     def _get_prompt_tokens(self, cli):
@@ -77,10 +85,11 @@ class ConCommander2:
     def do_loop(self):
         history = InMemoryHistory()
         gh_completer_client = WordCompleter(
-            ['execute', 'put', 'checkissues', 'viewissue', 'rtm', 'clear'],
+            ['execute', 'put', 'checkissues',
+             'viewissue', 'rtm', 'clear', 'viewhooks'],
             ignore_case=True, match_middle=True)
         gh_completer_server = WordCompleter(
-            ['clear'],
+            ['clear', 'viewhooks'],
             ignore_case=True, match_middle=True)
 
         while True:
@@ -130,7 +139,7 @@ class ConCommander2:
                     return
 
             if not result:
-                logging.error("Need a Valid Command")
+                pass
             else:
                 cmdargs=""
                 tokens=result.split(' ')
@@ -148,12 +157,14 @@ class ConCommander2:
                               Skip: Ctrl-C
                               Search: Vi mode standard
                               """)
+                    elif cmd == 'viewhooks':
+                        self.do_viewHooks()
+
                     elif cmd  == 'execute':
                         cmdargs=result.split(' ', 1) # get arguments
                         if len(cmdargs) > 1: # Args exist
                             logging.debug("Cmdargs:" )
                             logging.debug(cmdargs)
-                            self.do_rtm('on')
                             self.do_execute(cmdargs[1])
                         else:
                             logging.error("Missing command arguments")
@@ -169,7 +180,6 @@ class ConCommander2:
                         if len(cmdargs) > 0: # Args exist
                             logging.debug("Cmdargs:" )
                             logging.debug(cmdargs)
-                            self.do_rtm('on')
                             self.do_put(cmdargs[1])
                         else:
                             logging.error("Missing command arguments")
@@ -204,14 +214,14 @@ class ConCommander2:
             if self.out_watch is None or (not self.out_watch.isAlive()):
                 self.out_watch = threading.Thread(target=self.gitshell_watcher)
                 self.out_watch.daemon = True
-                logging.debug("Starting new watcher thread ({})".format(comm))
+                logging.info("Request to start rtm thread ({})".format(comm))
                 self.out_watch.start()
             else:
                 logging.warning("Watchdog already running({})".
                       format(self.out_watch.ident))
 
         if comm == 'off':
-            logging.info("User wish to stop watcher thread ({})".format(comm))
+            logging.info("Request to stop rtm thread ({})".format(comm))
             if self.out_watch is not None and self.out_watch.isAlive():
                 self.out_watch.do_run = False
                 self.out_watch.join()
@@ -229,9 +239,26 @@ class ConCommander2:
                 if comment_list:
                     for comment in comment_list:
                         print(comment)
-                        sleep(2)  # Pause for polling: GH throttling
+                        sleep(self.rtm_poll_freq)  # Pause for polling: GH throttling
         logging.debug("Watcher thread de-init {}".format(t))
         return
+
+    def do_viewHooks(self):
+        for hook in  self.git_repo.get_hooks():
+            print("HookId:{}, Name:{}, Active?{}, Destination:{}".
+                  format(hook.id, hook.name, hook.active, hook.config['url']))
+
+    def createIssue(self, instructions):
+        self.git_issue = ghlib.createIssueFromInstructions(
+            self.agentid, self.git_repo, instructions)
+
+        if self.git_issue is not None:
+            logging.info("Created task: ({}) - {}".
+                    format(self.git_issue.number, self.git_issue.title))
+            self.git_cissue=self.git_issue.number
+            return  True
+        else:
+            return  False
 
     def do_execute(self, arg):
         """execute <command [arguments]>
@@ -242,14 +269,7 @@ class ConCommander2:
             instructions = load(stream)
             instructions['issue']['body']['request'][0]['execlocal']['command']\
                 = str(arg)
-
-            self.git_issue = ghlib.createIssueFromInstructions(
-                self.agentid, self.git_repo, instructions)
-
-            if self.git_issue is not None:
-                logging.debug("Created task: ({}) - {}".
-                      format(self.git_issue.number, self.git_issue.title))
-                #self.do_rtm('on')
+            self.createIssue(instructions)
         else:
             logging.error('Need some command')
 
@@ -263,15 +283,8 @@ class ConCommander2:
             instructions['issue']['body']['request'][0]['putlocal']['location']\
                 = str(arg)
 
-            self.git_issue = ghlib.createIssueFromInstructions(
-                self.agentid, self.git_repo, instructions)
-
-            if self.git_issue is not None:
-                logging.debug("Created task: ({}) - {}".
-                      format(self.git_issue.number, self.git_issue.title))
-                #self.do_rtm('on')
+            self.createIssue(instructions)
         else:
             logging.error('Need /path/to/file on server')
-
 
 

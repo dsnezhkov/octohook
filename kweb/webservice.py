@@ -1,7 +1,7 @@
 from __future__ import print_function
 import bottle
 import yaml
-from gitcommander import CommandParser, GitEventWatcher
+from .gitcommander import CommandParser, GitEventWatcher
 import logging
 
 class SSLWSGIRefServer(bottle.ServerAdapter):
@@ -58,7 +58,8 @@ class WService(object):
 
                            # what is this agent's instructions
                            body = yaml.load(call['issue']['body'])
-                           logging.debug("Instructions from: ({}) : ".format(agentid))
+                           logging.info("Instructions from Agent ({}) Issue ({}) "
+                                                .format(agentid, issue))
                            c = CommandParser(self.config, agentid, issue)
                            c.parse(body)
                         except yaml.scanner.ScannerError as yse:
@@ -70,7 +71,7 @@ class WService(object):
                else:
                   logging.error("This call is not a valid labeled issue")
             else:
-               logging.error("This call is not a labeled issue")
+               logging.debug("This call is not a labeled issue")
          else:
             logging.error("This call has no action")
 

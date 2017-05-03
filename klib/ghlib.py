@@ -3,6 +3,7 @@ from github.GithubObject import NotSet
 from yaml import load, dump, scanner
 import logging
 
+
 def checkRepoExists(user, repo_name):
     repo = None
     try:

