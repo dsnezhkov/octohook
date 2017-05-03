@@ -19,6 +19,8 @@ class CommandResponder:
         self.ghuser_name = config.github()['git_user_name']
         self.ghtoken = config.github()['git_app_token']
         self.ghrepo_name = config.github()['git_repo_name']
+        self.gh_rlimit = config.github()['git_rlimit']
+        self.ghcomm_limit = config.github()['git_comm_limit']
 
         self.gh = Github(self.ghuser_name, self.ghtoken)
         self.ghuser = self.gh.get_user()
@@ -35,9 +37,6 @@ class CommandResponder:
             "Issue: " + str(self.ghissue.number), file_data)
 
     def setData(self, task_data):
-        # https://developer.github.com/v3/#rate-limiting
-        comment_dlimit=65536 # Limit of one comment size
-        wait_rlimit=3 # 3 seconds for GH throttling
 
         logging.debug("CommandResponder: Uploading data size {} for agent {}"
               "to GH (notify issue {} )".
@@ -46,22 +45,24 @@ class CommandResponder:
         if len(task_data) == 0:
             task_data="No Output"
         # We can hit the limit of comment post. Split the output
-        if len(task_data) < comment_dlimit:
+        if len(task_data) < self.ghcomm_limit:
             self.commentIssue(task_data)
         else:
-            for task_chunk in self._task_chunks(task_data, (comment_dlimit-1)):
+            for task_chunk in self._task_chunks(task_data, (self.ghcomm_limit-1)):
                 self.commentIssue(task_chunk)
-                time.sleep(wait_rlimit)
+                time.sleep(self.gh_rlimit)
 
         self.closeIssue()
 
     def commentIssue(self, task_data):
         self.ghissue.create_comment(task_data)
-        logging.debug("CommandResponder: Comment made on Issue")
+        logging.debug("CommandResponder: Comment made on Issue ({})".
+                      format(self.ghissue.number))
 
     def closeIssue(self):
         self.ghissue.edit(state="closed")
-        logging.debug("CommandResponder: Issue closed ")
+        logging.debug("CommandResponder: Issue ({}) closed ".
+                      format(self.ghissue.number))
 
 
 class CommandRouter:
@@ -108,7 +109,7 @@ class GitEventWatcher:
                 )
                 self.queue.put(call['issue']['number'])
         else:
-            logging.error("Client: This call has no action")
+            logging.error("GitEvent: Call arrived with no action")
             return False
 
 

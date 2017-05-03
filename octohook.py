@@ -53,6 +53,7 @@ def web_client_worker(data_q, config):
 
 
 def threader(config):
+
     data_queue = Queue(config.boot()['queue_watermark'])
     config.thread_queue = Queue(3)
 
@@ -98,17 +99,32 @@ def bootstrap(startargs):
 
     """
     print(logo)
-    logging.debug("Trying to load from {}".format(cfgfile))
+    print("Loading from {}".format(cfgfile))
+
     try:
         with open(cfgfile, 'r') as ymlfile:
             config = Configurator(yaml.load(ymlfile))
+
+        loglevel=logging.INFO
+        logfile="logs/octolog.log"
+
+        bootargs=config.boot()
+        if 'loglevel' in  bootargs:
+            loglevel = getattr(logging, bootargs['loglevel'].upper(), None)
+            if not isinstance(loglevel, int):
+                print("Invalid log level:{} Using defaults".format(loglevel))
+
+        if 'logfile' in  bootargs:
+            logfile=bootargs['logfile']
+
+        logging.basicConfig(filename=logfile,
+                        format='%(asctime)s:%(levelname)s:%(message)s',
+                        level=loglevel)
+
         threader(config)
     except IOError as e:
-        logging.critical("Unable to open config file {}".format(e))
+        print("Unable to open config file {}".format(e))
 
 if __name__ == '__main__':
-    logging.basicConfig(filename='logs/octohook.log',
-                        format='%(asctime)s:%(levelname)s:%(message)s',
-                        level=logging.INFO)
     atexit.register(quit_gracefully)
     bootstrap(sys.argv)

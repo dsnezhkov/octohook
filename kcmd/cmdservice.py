@@ -42,8 +42,8 @@ class ConCommander2:
         self.git = Github(self.git_user_name, self.git_app_token)
         self.git_user = self.git.get_user()
 
-        self.git_cissue=0
-        self.rtm_poll_freq=3
+        self.git_cissue=None
+        self.rtm_poll_freq=config.github()['git_rlimit']
 
         logging.debug("== List of repos  for user {}...".format(self.git_user))
         #for repo in self.g.get_user().get_repos():
@@ -55,6 +55,11 @@ class ConCommander2:
             # Create issue with a request
             self.git_repo = ghlib.createRepo(self.git_user, self.git_repo_name)
 
+    def setup(self, data_q):
+        self.data_q = data_q
+        self.out_watch = None
+
+    # Style Based Configuration
     def _get_bottom_toolbar_tokens(self, cli):
 
         tcontent='[{}] Task: {}'.format(self.role_human, self.git_cissue)
@@ -157,6 +162,7 @@ class ConCommander2:
                               Skip: Ctrl-C
                               Search: Vi mode standard
                               """)
+
                     elif cmd == 'viewhooks':
                         self.do_viewHooks()
 
@@ -167,14 +173,17 @@ class ConCommander2:
                             logging.debug(cmdargs)
                             self.do_execute(cmdargs[1])
                         else:
-                            logging.error("Missing command arguments")
+                            print("Execute: Mising command arguments")
+                            logging.error("Execute: Missing command arguments")
 
                     elif cmd  == 'rtm':
                         if len(tokens)  == 2:
                             comm=tokens[1]
                             self.do_rtm(comm)
                         else:
-                            logging.error("Missing command arguments")
+                            print("RTM: Mising command arguments:  <on|off>")
+                            logging.warning("RTM: Mising command arguments:  <on|off>")
+
                     elif cmd  == 'put':
                         cmdargs=result.split(' ', 1) # get arguments
                         if len(cmdargs) > 0: # Args exist
@@ -182,7 +191,8 @@ class ConCommander2:
                             logging.debug(cmdargs)
                             self.do_put(cmdargs[1])
                         else:
-                            logging.error("Missing command arguments")
+                            print("PUT: Missing command arguments")
+                            logging.error("PUT: Missing command arguments")
                     elif cmd  == 'checkissues':
                         top=5 # top issue to display states for
                         ghlib.checkIssueStates(self.git_repo,
@@ -195,55 +205,18 @@ class ConCommander2:
                             for x in comments_contents:
                                 print(x)
                         else:
-                            logging.error("Need Issue number ")
+                            print("ViewIssue: Need Issue number ")
+                            logging.warning("ViewIssue: Need Issue number ")
                     else:
-                        logging.error("Unsupported  Command")
+                        print("Unsupported  Command")
+                        logging.warning("Unsupported  Command")
                 else:
-                   logging.error("Invalid Command")
+                   print("Invalid Command")
+                   logging.warning("Invalid Command")
 
-
-    def setup(self, data_q):
-        self.data_q = data_q
-        self.out_watch = None
-
-    def do_rtm(self, comm):
-        """Real Time output monitoring"""
-        logging.debug("Command {} received".format(comm))
-
-        if comm == 'on':
-            if self.out_watch is None or (not self.out_watch.isAlive()):
-                self.out_watch = threading.Thread(target=self.gitshell_watcher)
-                self.out_watch.daemon = True
-                logging.info("Request to start rtm thread ({})".format(comm))
-                self.out_watch.start()
-            else:
-                logging.warning("Watchdog already running({})".
-                      format(self.out_watch.ident))
-
-        if comm == 'off':
-            logging.info("Request to stop rtm thread ({})".format(comm))
-            if self.out_watch is not None and self.out_watch.isAlive():
-                self.out_watch.do_run = False
-                self.out_watch.join()
-            else:
-                logging.warning("Watchdog not started")
-
-    def gitshell_watcher(self):
-        t = threading.currentThread()
-        logging.debug("Watcher thread init {}".format(t))
-        while getattr(t, "do_run", True):
-            if not self.data_q.empty():
-                comment_list=ghlib.getClosedIssueComments(
-                        self.git_repo,
-                        self.data_q.get())
-                if comment_list:
-                    for comment in comment_list:
-                        print(comment)
-                        sleep(self.rtm_poll_freq)  # Pause for polling: GH throttling
-        logging.debug("Watcher thread de-init {}".format(t))
-        return
 
     def do_viewHooks(self):
+        """ View  Hooks  """
         for hook in  self.git_repo.get_hooks():
             print("HookId:{}, Name:{}, Active?{}, Destination:{}".
                   format(hook.id, hook.name, hook.active, hook.config['url']))
@@ -288,3 +261,49 @@ class ConCommander2:
             logging.error('Need /path/to/file on server')
 
 
+    def do_rtm(self, comm):
+        """Real Time output monitoring"""
+        logging.debug("Command {} received".format(comm))
+
+        if comm == 'on':
+            if self.out_watch is None or (not self.out_watch.isAlive()):
+                self.out_watch = threading.Thread(target=self.gitshell_watcher)
+                self.out_watch.daemon = True
+                self.out_watch.do_run =  True
+                self.data_q.queue.clear()
+                print("Request to start rtm thread")
+                logging.info("Request to start rtm thread ".format(comm))
+                self.out_watch.start()
+            else:
+                print("RTM already running")
+                logging.warning("Watchdog already running({})".
+                      format(self.out_watch.ident))
+
+        elif comm == 'off':
+            print("Request to stop rtm thread")
+            logging.info("Request to stop rtm thread ({})".format(comm))
+            if self.out_watch is not None and self.out_watch.isAlive():
+                self.out_watch.do_run = False
+                self.out_watch.join()
+            else:
+                print("RTM not started yet")
+                logging.warning("Watchdog not started")
+
+
+    def gitshell_watcher(self):
+        t = threading.currentThread()
+        logging.debug("Watcher thread init {}".format(t))
+        while getattr(t, "do_run", True):
+            if not self.data_q.empty():
+                logging.debug("Polling Queue for Closed Issues")
+                comment_list=ghlib.getClosedIssueComments(
+                        self.git_repo,
+                        self.data_q.get())
+                if comment_list:
+                    for comment in comment_list:
+                        print(comment)
+                        logging.debug("Polling Wait for {} ".
+                                      format(self.rtm_poll_freq))
+                        sleep(self.rtm_poll_freq)
+        logging.debug("Watcher thread de-init {}".format(t))
+        return

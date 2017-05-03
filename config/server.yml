@@ -5,6 +5,10 @@ boot: &boot
    queue_watermark: 1000
    # What is out unique opertional agent id
    agentid: 'b932e9f5'
+   # Where the logs are 
+   logfile: 'logs/octohook_server.log'
+   # Level of verbosity: debug, info, warning, error, critical
+   loglevel: 'debug'
 
 # Octohook client side roles: has a command service and an optional web service
 # Webservice is needed to get realtime monitoring of broadcast going over Webhooks
@@ -26,6 +30,10 @@ github: &github
    # Github app toekn to be used in place of passwords 
    # See: https://github.com/settings/tokens
    git_app_token: 'cb07d47ed051d071386c49f9ac34cd30272390e4' 
+   # Github RTM Rate limiting to 3 seconds per poll (Chunky Comment post)
+   git_rlimit: 3
+   # Github Limit Issue comment size
+   git_comm_limit: 65535
 
 # Directives for the client side
 server:
