@@ -8,13 +8,13 @@ boot: &boot
    # Where the logs are 
    logfile: 'logs/octohook_server.log'
    # Level of verbosity: debug, info, warning, error, critical
-   loglevel: 'debug'
+   loglevel: 'info'
 
 # Octohook client side roles: has a command service and an optional web service
 # Webservice is needed to get realtime monitoring of broadcast going over Webhooks
 # Octohook server side roles: has a command service and a web service
 roles:
-   # Web service can operate as both roles: {client|server}
+   # Web service can possibly operate as both roles: {client|server}
    web:
       client: False
       server: True
@@ -54,5 +54,7 @@ server:
       # Communicating securely to Github
       # Use scripts in `util` to generate the needed keys
       certificate: 'keys/server.pem'
+      # Routing
+      hook_route: '/exfil1/'
    cmd:
 

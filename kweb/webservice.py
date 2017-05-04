@@ -91,10 +91,6 @@ class WService(object):
             # Watch Events
             gew = GitEventWatcher(
                 self.config.client()['general']['boot']['agentid'], self.queue)
-            #if bottle.request.get_header('X-GitHub-Event') == 'issue':
-            #   print("Event: Issue")
             gew.watch_issue_closed(call)
-            # if bottle.request.get_header('X-GitHub-Event') == 'issue_comment':
-            #   print("Event: Comment")
          else:
             logging.debug("Client: Skipping request")

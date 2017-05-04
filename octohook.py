@@ -25,7 +25,7 @@ def cmdservice_worker(data_q, config):
 def web_server_worker(data_q, config):
     wsapp = WService(queue=data_q, config=config)
     wrouter = WRouter(wsapp)
-    wrouter.route_server()
+    wrouter.route_server(config.server())
 
     # Start SSL-wrapped bottle
     logging.info('Starting Webservice server (daemon) ')
@@ -40,8 +40,8 @@ def web_server_worker(data_q, config):
 def web_client_worker(data_q, config):
     wsapp = WService(queue=data_q, config=config)
     wrouter = WRouter(wsapp)
+    wrouter.route_client(config.client())
 
-    wrouter.route_client()
     # Start SSL-wrapped bottle
     sslsrv = SSLWSGIRefServer(host=config.client()['web']['host'],
                               port=config.client()['web']['port'])

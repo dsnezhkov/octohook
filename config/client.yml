@@ -8,7 +8,7 @@ boot: &boot
    # Where the logs are 
    logfile: 'logs/octohook_client.log'
    # Level of verbosity
-   loglevel: 'debug'
+   loglevel: 'info'
 
 # Octohook client side roles: has a command service and an optional web service
 # Octohook server side roles: has a command service and a web service
@@ -53,6 +53,8 @@ client:
       # Communicating securely to Github
       # Use scripts in `util` to generate the needed keys
       certificate: 'keys/server.pem'
+      # Routing
+      hook_route: '/exfil2/'
    cmd:
       # Where supported request templates are stored
       template_dir: "./templates"
