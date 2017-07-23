@@ -14,7 +14,7 @@ class CommandResponder:
         self.agentid = agentid
         self.issue = issue
 
-        logging.debug(yaml.dump(config))
+        #logging.debug(yaml.dump(config))
 
         self.ghuser_name = config.github()['git_user_name']
         self.ghtoken = config.github()['git_app_token']
@@ -136,7 +136,7 @@ class CommandParser:
                         'putlocal': 'putlocal',
                         'execlocal': 'execlocal'
                     }
-                    cmd = cmd_switcher.get(command.keys()[0], "nosuchcommand")
+                    cmd = cmd_switcher.get(list(command.keys())[0], "nosuchcommand")
                     getattr(CommandParser(self.config, self.agentid, self.issue),
                             str(cmd))(command)
         else:

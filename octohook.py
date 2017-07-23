@@ -1,10 +1,12 @@
-#!/root/Code/exfilhook/venv/bin/python
 from __future__ import print_function
 import threading
 import bottle
 import sys
 import yaml
-from Queue import Queue
+try:
+    from Queue import Queue
+except ImportError:
+    from queue import  Queue
 from kweb.webservice import SSLWSGIRefServer, WService
 from kweb.webrouter import WRouter
 from kcmd.cmdservice import ConCommander2

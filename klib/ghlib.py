@@ -17,10 +17,9 @@ def checkRepoExists(user, repo_name):
 
 
 def createRepo(user, repo):
-    repo = None
     try:
         logging.info("Creating repo {}...".format(repo))
-        repo = user.create_repo(repo, description="Exfil 1",
+        repo = user.create_repo(repo, description="",
                                 homepage=NotSet, private=False,
                                 has_issues=True,
                                 has_wiki=False, has_downloads=True,
@@ -52,8 +51,9 @@ def createIssueFromInstructions(agentid, repo, instructions):
 
 def createIssueFromFile(agentid, repo, reqfile):
     try:
-        stream = file(reqfile, 'r')
+        stream = open(reqfile, 'r')
         instructions = load(stream)
+        stream.close()
         logging.debug(dump(instructions))
 
         issue_title = instructions["issue"]["title"]

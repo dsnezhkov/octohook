@@ -24,12 +24,12 @@ roles:
 # Directives to guide interface with Github API
 github: &github
    # Github Repo
-   git_repo_name: 'exfil1' 
+   git_repo_name: 'rendezvous'
    # Github User name allowed to Github repo
    git_user_name: 'drtkn'
    # Github app toekn to be used in place of passwords 
    # See: https://github.com/settings/tokens
-   git_app_token: 'cb07d47ed051d071386c49f9ac34cd30272390e4' 
+   git_app_token: '86c3dec38b8b0190c8f7f451'
    # Github RTM Rate limiting to 3 seconds per poll (Chunky Comment post)
    git_rlimit: 3
    # Github Limit Issue comment size
@@ -55,6 +55,6 @@ server:
       # Use scripts in `util` to generate the needed keys
       certificate: 'keys/server.pem'
       # Routing
-      hook_route: '/exfil1/'
+      hook_route: '/server/'
    cmd:
 

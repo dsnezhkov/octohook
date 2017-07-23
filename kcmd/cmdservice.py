@@ -14,7 +14,7 @@ import time
 from getpass import getuser
 from socket import gethostname
 from pygments.token import Token
-from cmdlook import ServerStyle, ClientStyle
+from kcmd.cmdlook import ServerStyle, ClientStyle
 
 from prompt_toolkit.shortcuts import clear
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
@@ -53,7 +53,7 @@ class ConCommander2:
         if self.git_repo is None:
             # repo.create_file('/agents/UUID/filename', 'commitmessage', 'content')
             # Create issue with a request
-            self.git_repo = ghlib.createRepo(self.git_user, self.git_repo_name)
+            self.git_repo = ghlib.createRepo(self.git_user, str(self.git_repo_name))
 
     def setup(self, data_q):
         self.data_q = data_q
@@ -238,8 +238,9 @@ class ConCommander2:
         Send `command` and its arguments to server """
         if arg:
             logging.info("Executing {}".format(arg))
-            stream = file(os.path.join(self.templatedir, 'execlocal.tmpl'), 'r')
+            stream = open(os.path.join(self.templatedir, 'execlocal.tmpl'), 'r')
             instructions = load(stream)
+            stream.close()
             instructions['issue']['body']['request'][0]['execlocal']['command']\
                 = str(arg)
             self.createIssue(instructions)
@@ -251,8 +252,9 @@ class ConCommander2:
         Send `path to file` to server. File uplaoded to GH in agent space """
         if arg:
             logging.info("Executing {}".format(arg))
-            stream = file(os.path.join(self.templatedir, 'putlocal.tmpl'), 'r')
+            stream = open(os.path.join(self.templatedir, 'putlocal.tmpl'), 'r')
             instructions = load(stream)
+            stream.close()
             instructions['issue']['body']['request'][0]['putlocal']['location']\
                 = str(arg)
 

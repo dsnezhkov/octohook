@@ -42,7 +42,7 @@ class ExecLProcessTask:
             se=""
             se_conv_error=False
             so_conv_error=False
-            rprocess=delegator.chain(self.data['command'])
+            rprocess=delegator.run(self.data['command'])
 
             try:
                 so=rprocess.out
