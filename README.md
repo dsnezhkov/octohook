@@ -7,14 +7,18 @@ Git Web Hook Tunnel for C2
 ```bash
 # apt-get update && apt-get upgrade -y
 # apt-get install python3-pip git -y
-
 # pip install --upgrade pip
 # pip install virtualenv
 # virtualenv  -p python venv
 # . venv/bin/activate
 # git clone https://github.com/dsnezhkov/octohook
+```
+```bash
 # pip install prompt_toolkit PyGithub bottle pygments pyaml delegator.py
 ```
+or 
+
+`pip install -r doc/requirements.txt`
 
 # Setup
 - Login as sevice GH account.
